@@ -18,7 +18,7 @@
       "hash": "1f2596a5cd16619672a57c36b9b46ddf42fa59ef"
     },
     "com.unity.burst": {
-      "version": "1.8.24",
+      "version": "1.8.23",
       "depth": 1,
       "source": "registry",
       "dependencies": {
@@ -93,14 +93,6 @@
       "source": "registry",
       "dependencies": {},
       "url": "https://packages.unity.com"
-    },
-    "com.unity.multiplayer.center": {
-      "version": "1.0.0",
-      "depth": 0,
-      "source": "builtin",
-      "dependencies": {
-        "com.unity.modules.uielements": "1.0.0"
-      }
     },
     "com.unity.nuget.newtonsoft-json": {
       "version": "3.2.1",
@@ -218,7 +210,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.core-utils": {
-      "version": "2.5.3",
+      "version": "2.5.2",
       "depth": 1,
       "source": "registry",
       "dependencies": {
@@ -250,7 +242,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.openxr": {
-      "version": "1.15.1",
+      "version": "1.14.0",
       "depth": 1,
       "source": "registry",
       "dependencies": {
