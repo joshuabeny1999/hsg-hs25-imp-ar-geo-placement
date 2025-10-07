@@ -4,25 +4,46 @@ using UnityEngine.UI;
 
 public class ArrowToTarget : MonoBehaviour
 {
-    public double targetLat = 47.0;
-    public double targetLon = 8.0;
-    public Image arrowImage; // dein UI Image (Pfeil)
+    
+    [Header("References")]
+    [Tooltip("The GeoObjectSpawner to compare against")]
+    public GeoObjectSpawner geoSpawner;
+
+    [Header("Settings")]
+    [Tooltip("Hide arrow when closer than this distance (meters)")]
     public float hideWhenCloserThanMeters = 30f;
 
+    private Image _arrowImage;
     float _bearingToTarget = 0f;
     float _distanceM = Mathf.Infinity;
 
     void Start()
     {
-        if (arrowImage == null) arrowImage = GetComponent<Image>();
+        // Get Image component
+        _arrowImage = GetComponent<Image>();
+        if (_arrowImage == null)
+        {
+            Debug.LogError("[ArrowToTarget] No Image component found! Add this script to a Image.");
+            enabled = false;
+            return;
+        }
+        
+        // Auto-find spawner if not assigned
+        if (geoSpawner == null)
+        {
+            geoSpawner = FindFirstObjectByType<GeoObjectSpawner>();
+        }
+        
         Input.compass.enabled = true;
         if (Input.location.isEnabledByUser) Input.location.Start(1f, 0.1f);
     }
 
     void Update()
     {
-        if (Input.location.status != LocationServiceStatus.Running || arrowImage == null) return;
+        if (Input.location.status != LocationServiceStatus.Running || !_arrowImage || !geoSpawner) return;
 
+        double targetLat = geoSpawner.latitude;
+        double targetLon = geoSpawner.longitude;
         var coord = Input.location.lastData;
         _bearingToTarget = GeoDebugHUD_BearingDeg(coord.latitude, coord.longitude, targetLat, targetLon);
         _distanceM = GeoDebugHUD_HaversineMeters(coord.latitude, coord.longitude, targetLat, targetLon);
@@ -34,10 +55,10 @@ public class ArrowToTarget : MonoBehaviour
         if (relative < 0) relative += 360f;
 
         // Rotier UI-Pfeil (Z-Rotation)
-        arrowImage.rectTransform.rotation = Quaternion.Euler(0, 0, -relative);
+        _arrowImage.rectTransform.rotation = Quaternion.Euler(0, 0, -relative);
 
         // Optional: ausblenden, wenn du praktisch "da" bist
-        arrowImage.enabled = _distanceM > hideWhenCloserThanMeters;
+        _arrowImage.enabled = _distanceM > hideWhenCloserThanMeters;
     }
 
     // kleine statische Helfer (du kannst die aus dem HUD kopieren, hier inline für Unabhängigkeit)

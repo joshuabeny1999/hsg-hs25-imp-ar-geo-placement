@@ -12,7 +12,7 @@ public class GeoObjectSpawner : MonoBehaviour
     [Header("WPS Helper")]
     [SerializeField] private ARWorldPositioningObjectHelper positioningHelper;
 
-    [Header("GPS Location (St. Gallen)")]
+    [Header("GPS Location")]
     public double latitude = 47.41041273038499;
     public double longitude = 9.333280815523262;
     

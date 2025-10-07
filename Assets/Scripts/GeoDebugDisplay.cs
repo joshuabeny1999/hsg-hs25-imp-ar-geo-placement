@@ -15,6 +15,8 @@ public class GeoDebugDisplay : MonoBehaviour
     [Header("Settings")]
     [Tooltip("Update interval in seconds")]
     public float updateInterval = 0.5f;
+    [Tooltip("Show or hide the debug display")]
+    public bool showDebugDisplay = true;
 
     private TextMeshProUGUI _text;
     private float _updateTimer = 0f;
@@ -36,6 +38,10 @@ public class GeoDebugDisplay : MonoBehaviour
         {
             geoSpawner = FindFirstObjectByType<GeoObjectSpawner>();
         }
+        
+        // Set initial visibility
+        _text.gameObject.SetActive(showDebugDisplay);
+        if (!showDebugDisplay) return;
 
         // Start GPS
         StartGPS();
