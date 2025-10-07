@@ -1,11 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class UIHeightSlider : MonoBehaviour
 {
-    public GeoExtrudedBuildingSpawner spawner; // Referenz im Inspector setzen
+    public GeoObjectSpawner spawner; // Referenz im Inspector setzen
     public Slider slider;                      // deinen Slider referenzieren
-    public Text valueText;                     // optional: Anzeige in Metern
+    public TextMeshProUGUI valueText;                    
 
     void Start()
     {
@@ -16,7 +17,7 @@ public class UIHeightSlider : MonoBehaviour
             if (slider.minValue == 0f) slider.minValue = 0f;
             if (slider.maxValue < 20f) slider.maxValue = 20f;
 
-            slider.value = spawner.buildingHeightMeters;
+            slider.value = spawner.cubeHeightMeters;
             slider.onValueChanged.AddListener(OnHeightChanged);
             UpdateLabel(slider.value);
         }
@@ -26,7 +27,7 @@ public class UIHeightSlider : MonoBehaviour
     {
         if (spawner != null)
         {
-            spawner.SetBuildingHeightMeters(h);
+            spawner.SetCubeHeightMeters(h);
             UpdateLabel(h);
         }
     }
