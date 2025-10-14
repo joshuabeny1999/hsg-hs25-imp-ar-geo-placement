@@ -6,7 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/GeoPlacementScene.unity
+    path: Assets/_App/ARScreen/Scenes/GeoPlacementScene.unity
     guid: a2a5ea5e647944541ab6c8844f3372c0
   m_configObjects:
     Niantic.Lightship.AR.LightshipSettings: {fileID: 11400000, guid: f3eec15ba72ee4704b0435e13f51de0a, type: 2}

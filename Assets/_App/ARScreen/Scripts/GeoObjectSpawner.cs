@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using Niantic.Lightship.AR.WorldPositioning;
 using System.Collections;
+using Shared.Scripts.Geo; 
 
 /// <summary>
 /// Simple spawner that places a cube at a specific GPS location
@@ -13,9 +14,9 @@ public class GeoObjectSpawner : MonoBehaviour
     [SerializeField] private ARWorldPositioningObjectHelper positioningHelper;
     [SerializeField] private ARWorldPositioningManager wpsManager;
 
-    [Header("GPS Location")]
-    public double latitude = 47.41041273038499;
-    public double longitude = 9.333280815523262;
+    [Header("LV95 Coordinates (EPSG:2056)")]
+    public double east = 2739782.97;
+    public double north = 1250944.04;
     
     [Header("Cube Settings")]
     [Tooltip("Size of the cube in meters (larger = more visible from distance)")]
@@ -86,41 +87,23 @@ public class GeoObjectSpawner : MonoBehaviour
     /// </summary>
     private IEnumerator FetchAltitudeAndSpawn()
     {
-        string url = $"https://api.open-elevation.com/api/v1/lookup?locations={latitude},{longitude}";
-        
-        Debug.Log($"[GeoObjectSpawner] Fetching altitude for {latitude}, {longitude}...");
-        
-        using (UnityWebRequest request = UnityWebRequest.Get(url))
-        {
-            yield return request.SendWebRequest();
+        string url = $"https://www.geoportal.ch/api/elevation/point?lang=de&east={east:F2}&north={north:F2}";
+        using var req = UnityWebRequest.Get(url);
+        req.timeout = 10;
+        yield return req.SendWebRequest();
 
-            if (request.result == UnityWebRequest.Result.Success)
+        if (req.result == UnityWebRequest.Result.Success)
+        {
+            var json = req.downloadHandler.text;
+            var resp = JsonUtility.FromJson<SwissElevationResponse>(json);
+            if (resp != null)
             {
-                try
-                {
-                    // Parse JSON response
-                    string json = request.downloadHandler.text;
-                    ElevationResponse response = JsonUtility.FromJson<ElevationResponse>(json);
-                    
-                    if (response != null && response.results != null && response.results.Length > 0)
-                    {
-                        _altitudeMeters = response.results[0].elevation;
-                        Debug.Log($"[GeoObjectSpawner] Altitude fetched: {_altitudeMeters}m");
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[GeoObjectSpawner] Failed to parse altitude, using default 0m");
-                    }
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogError($"[GeoObjectSpawner] Error parsing altitude: {e.Message}");
-                }
+                _altitudeMeters = resp.elevation;
             }
-            else
-            {
-                Debug.LogWarning($"[GeoObjectSpawner] Failed to fetch altitude: {request.error}. Using default altitude.");
-            }
+        }
+        else
+        {
+            Debug.LogWarning($"Altitude fetch failed: {req.error}");
         }
 
         SpawnCube();
@@ -142,6 +125,11 @@ public class GeoObjectSpawner : MonoBehaviour
 
     private void SpawnCube()
     {
+        
+        // Convert LV95 -> WGS84 for Lightship
+        ProjNetTransformCH.LV95ToWGS84(east, north, out double lat, out double lon);
+        Debug.Log($"[GeoObjectSpawner] Converted LV95 to WGS84: {east}, {north} -> {lat}, {lon}");
+
         // Create cube
         
         _cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -155,9 +143,9 @@ public class GeoObjectSpawner : MonoBehaviour
         _cube.GetComponent<Renderer>().material = mat;
 
         // Position at GPS location
-        positioningHelper.AddOrUpdateObject(_cube, latitude, longitude, _altitudeMeters, Quaternion.identity);
+        positioningHelper.AddOrUpdateObject(_cube, lat, lon, _altitudeMeters, Quaternion.identity);
         
-        Debug.Log($"[GeoObjectSpawner] Cube spawned at GPS: {latitude}, {longitude} | Altitude: {_altitudeMeters}m (API) | Size: {cubeSize}m | Height: {cubeHeightMeters}m");
+        Debug.Log($"[GeoObjectSpawner] Cube spawned at GPS: {lat}, {lon} | Altitude: {_altitudeMeters}m (API) | Size: {cubeSize}m | Height: {cubeHeightMeters}m");
         
         AddBillboardLabel(_cube.transform);
     }
@@ -182,15 +170,11 @@ public class GeoObjectSpawner : MonoBehaviour
 
 // JSON response classes for Open-Elevation API
 [System.Serializable]
-public class ElevationResponse
+public class SwissElevationResponse
 {
-    public ElevationResult[] results;
-}
-
-[System.Serializable]
-public class ElevationResult
-{
-    public double latitude;
-    public double longitude;
-    public double elevation;
+    public double east;
+    public double north;
+    public double elevation; // terrain height (AMSL)
+    public double surface;   // building top height (AMSL)
+    public double elevationDifference;
 }

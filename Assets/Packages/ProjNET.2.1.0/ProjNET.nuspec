@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>ProjNET</id>
+    <version>2.1.0</version>
+    <authors>Morten Nielsen, NetTopologySuite-Team</authors>
+    <license type="expression">LGPL-2.1-or-later</license>
+    <licenseUrl>https://licenses.nuget.org/LGPL-2.1-or-later</licenseUrl>
+    <icon>icon.png</icon>
+    <description>.NET Spatial Reference and Projection Engine.
+Proj.NET performs point-to-point coordinate conversions between geodetic coordinate systems for use in fx. Geographic Information Systems (GIS) or GPS applications. The spatial reference model used adheres to the Simple Features specification.</description>
+    <copyright>Copyright © 2006 - 2025 NetTopologySuite - Team, Morten Nielsen</copyright>
+    <tags>OGC SFS Projection</tags>
+    <repository type="git" url="https://github.com/NetTopologySuite/ProjNet4GeoAPI" commit="08a1a8668ec6bef0b1080632eec67a46849ad110" />
+    <dependencies>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="System.Memory" version="4.6.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.1" />
+    </dependencies>
+  </metadata>
+</package>

@@ -1,4 +1,5 @@
 using System;
+using Shared.Scripts.Geo;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -42,8 +43,9 @@ public class ArrowToTarget : MonoBehaviour
     {
         if (Input.location.status != LocationServiceStatus.Running || !_arrowImage || !geoSpawner) return;
 
-        double targetLat = geoSpawner.latitude;
-        double targetLon = geoSpawner.longitude;
+        double targetEast = geoSpawner.east;
+        double targetNorth = geoSpawner.north;
+        ProjNetTransformCH.LV95ToWGS84(targetEast, targetNorth, out var targetLat, out var targetLon);
         var coord = Input.location.lastData;
         _bearingToTarget = GeoDebugHUD_BearingDeg(coord.latitude, coord.longitude, targetLat, targetLon);
         _distanceM = GeoDebugHUD_HaversineMeters(coord.latitude, coord.longitude, targetLat, targetLon);

@@ -1163,8 +1163,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   positioningHelper: {fileID: 783262639}
   wpsManager: {fileID: 783262638}
-  latitude: 47.23439243989694
-  longitude: 8.82260976587391
+  east: 2704830
+  north: 1232416
   cubeSize: 5
   cubeHeightMeters: 5
   cubeMaterial: {fileID: 2100000, guid: 117b875761173479c81e54a847f2cc4d, type: 2}

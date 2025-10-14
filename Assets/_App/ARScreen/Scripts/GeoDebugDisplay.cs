@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro;
 using System;
 using Niantic.Lightship.AR.WorldPositioning;
+using Shared.Scripts.Geo;
 
 /// <summary>
 /// Field HUD for geo placement debugging.
@@ -101,11 +102,16 @@ public class GeoDebugDisplay : MonoBehaviour
         string bearingInfo   = "";
         string wpsInfo       = WpsStatusLine();
 
+        double targetEast = geoSpawner.east;
+        double targetNorth = geoSpawner.north;
+        ProjNetTransformCH.LV95ToWGS84(targetEast, targetNorth, out var targetLat, out var targetLon);
+
         // Distance & proximity color bands
         float distanceM = float.NaN;
         if (geoSpawner != null)
         {
-            distanceM = HaversineMeters(dLat, dLon, geoSpawner.latitude, geoSpawner.longitude);
+            
+            distanceM = HaversineMeters(dLat, dLon, targetLat, targetLon);
             proximityInfo = ProximityLine(distanceM);
         }
 
@@ -113,7 +119,7 @@ public class GeoDebugDisplay : MonoBehaviour
         if (showHeading && geoSpawner != null)
         {
             float deviceHeading = Input.compass.enabled ? Input.compass.trueHeading : float.NaN; // 0..360°
-            float bearingToTarget = (float)BearingDegrees(dLat, dLon, geoSpawner.latitude, geoSpawner.longitude);
+            float bearingToTarget = (float)BearingDegrees(dLat, dLon, targetLat, targetLon);
             float turn = ShortestSignedAngle(deviceHeading, bearingToTarget); // left(-)/right(+)
 
             string arrow = Mathf.Abs(turn) <= onTargetDegrees ? "<color=purple>● On target</color>" :
@@ -150,12 +156,18 @@ public class GeoDebugDisplay : MonoBehaviour
 
     private string CubeInfoBlock()
     {
+        double targetEast = geoSpawner.east;
+        double targetNorth = geoSpawner.north;
+        ProjNetTransformCH.LV95ToWGS84(targetEast, targetNorth, out var targetLat, out var targetLon);
+
         if (geoSpawner == null) return "";
         return
             $"\n\n<b>CUBE (Target)</b>\n" +
-            $"Lat: {geoSpawner.latitude:F8}\n" +
-            $"Lon: {geoSpawner.longitude:F8}\n" +
-            $"Alt (MSL/API): {geoSpawner.AltitudeMeters:F1} m";
+            $"East: {targetEast:F3} m\n" +
+            $"North: {targetNorth:F3} m\n" +
+            $"Lat: {targetLat:F8}\n" +
+            $"Lon: {targetLon:F8}\n" +
+            $"Alt (API): {geoSpawner.AltitudeMeters:F1} m";
     }
 
     private string WpsStatusLine()
