@@ -163,11 +163,11 @@ public class GeoDebugDisplay : MonoBehaviour
         if (geoSpawner == null) return "";
         return
             $"\n\n<b>CUBE (Target)</b>\n" +
-            $"East: {targetEast:F3} m\n" +
-            $"North: {targetNorth:F3} m\n" +
+            $"East: {targetEast:F8}\n" +
+            $"North: {targetNorth:F8}\n" +
             $"Lat: {targetLat:F8}\n" +
             $"Lon: {targetLon:F8}\n" +
-            $"Alt (API): {geoSpawner.AltitudeMeters:F1} m";
+            $"Alt (API): {geoSpawner.AltitudeMeters:F2} m";
     }
 
     private string WpsStatusLine()

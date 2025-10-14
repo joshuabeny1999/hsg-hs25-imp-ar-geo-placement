@@ -87,24 +87,20 @@ public class GeoObjectSpawner : MonoBehaviour
     /// </summary>
     private IEnumerator FetchAltitudeAndSpawn()
     {
-        string url = $"https://www.geoportal.ch/api/elevation/point?lang=de&east={east:F2}&north={north:F2}";
-        using var req = UnityWebRequest.Get(url);
-        req.timeout = 10;
-        yield return req.SendWebRequest();
-
-        if (req.result == UnityWebRequest.Result.Success)
+        yield return GeoInfoAPI.FetchElevation(east, north, resp =>
         {
-            var json = req.downloadHandler.text;
-            var resp = JsonUtility.FromJson<SwissElevationResponse>(json);
             if (resp != null)
             {
                 _altitudeMeters = resp.elevation;
+                Debug.Log($"[GeoObjectSpawner] Altitude received: {_altitudeMeters}m");
             }
-        }
-        else
-        {
-            Debug.LogWarning($"Altitude fetch failed: {req.error}");
-        }
+            else
+            {
+                Debug.LogWarning("[GeoObjectSpawner] Failed to fetch altitude – using default 0m");
+            }
+
+            SpawnCube();
+        });
 
         SpawnCube();
     }
@@ -166,15 +162,4 @@ public class GeoObjectSpawner : MonoBehaviour
             if (bb != null) bb.localPosition = new Vector3(0f, cubeHeightMeters + 0.5f, 0f);
         }
     }
-}
-
-// JSON response classes for Open-Elevation API
-[System.Serializable]
-public class SwissElevationResponse
-{
-    public double east;
-    public double north;
-    public double elevation; // terrain height (AMSL)
-    public double surface;   // building top height (AMSL)
-    public double elevationDifference;
 }
