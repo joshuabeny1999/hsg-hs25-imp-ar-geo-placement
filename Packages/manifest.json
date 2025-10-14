@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.github-glitchenzo.nugetforunity": "https://github.com/GlitchEnzo/NuGetForUnity.git?path=/src/NuGetForUnity",
     "com.nianticlabs.lightship": "https://github.com/niantic-lightship/ardk-upm.git",
     "com.unity.collab-proxy": "2.9.3",
     "com.unity.feature.development": "1.0.2",
