@@ -1646,6 +1646,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1070883114}
   - component: {fileID: 1070883115}
+  - component: {fileID: 1070883116}
   m_Layer: 0
   m_Name: GeoBuilding
   m_TagString: Untagged
@@ -1688,6 +1689,29 @@ MonoBehaviour:
   cubeHeightMeters: 5
   cubeMaterial: {fileID: 2100000, guid: 117b875761173479c81e54a847f2cc4d, type: 2}
   instanceMaterial: 1
+--- !u!114 &1070883116
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1070883112}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64a37cdd920f8ff4590d1579cfd917e3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  serviceEndpoint: https://www.geoportal.ch/services/wfs
+  typeNames: geoportal:a111_avdm01_amtlverm_fla
+  maxFeatureCount: 1000000
+  boundingBoxSizeMeters: 300
+  authorizationHeader: Basic cHJvamVrdC1idWlsZC1hckBzdHVkZW50LnVuaXNnLmNoOkIwMnBIOiTDpGg8PlBDU1l0aTZnWA==
+  userAgent: Mozilla/5.0 QGIS/34403/Windows 10 Version 2009
+  useDebugCoordinates: 1
+  debugLv95Coordinates: {x: 2739783, y: 1250944}
+  locationDesiredAccuracyMeters: 5
+  locationUpdateDistanceMeters: 0.5
+  locationServiceTimeoutSeconds: 15
 --- !u!1 &1132784300
 GameObject:
   m_ObjectHideFlags: 0
