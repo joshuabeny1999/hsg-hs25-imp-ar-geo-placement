@@ -12,20 +12,26 @@ using Shared.Scripts.Geo;
 [Serializable]
 public class ProjectedBuilding
 {
-    public string GebVersNr { get; }
+    public string Egid { get; }
     public string GebHauptNutzung { get; }
     public string Coordinates { get; }
 
-    public ProjectedBuilding(string gebVersNr, string gebHauptNutzung, string coordinates)
+    public string Nbident { get; }
+
+    public string GebVersNr { get; }
+
+    public ProjectedBuilding(string egid, string gebHauptNutzung, string coordinates, string nbident, string gebVersNr)
     {
-        GebVersNr = gebVersNr;
+        Egid = egid;
         GebHauptNutzung = gebHauptNutzung;
         Coordinates = coordinates;
+        Nbident = nbident;
+        GebVersNr = gebVersNr;
     }
 
     public override string ToString()
     {
-        return $"{GebVersNr}; {GebHauptNutzung}; Coordinates={Coordinates}";
+        return $"egid={Egid}; Haupnutzung={GebHauptNutzung}; Coordinates={Coordinates}; Nbident={Nbident}; GebVersNr={GebVersNr}";
     }
 }
 
@@ -35,17 +41,22 @@ public class GeoInfoAPIConnector : MonoBehaviour
     [SerializeField] private string serviceEndpoint = "https://www.geoportal.ch/services/wfs";
     [SerializeField] private string typeNames = "geoportal:a111_avdm01_amtlverm_fla";
     [SerializeField] private int maxFeatureCount = 1000000;
+
     [SerializeField, Tooltip("Width/height of the square bounding box centered around the player in meters.")]
     private float boundingBoxSizeMeters = 300f;
+
     
     [Header("Debug Settings")]
     [SerializeField, Tooltip("Use manual LV95 coordinates instead of the device GPS (for in-editor testing).")]
     private bool useDebugCoordinates = false;
-    [SerializeField, Tooltip("Manual LV95 (EPSG:2056) coordinates used when debug mode is enabled. X = Easting, Y = Northing." )]
-    private Vector2 debugLv95Coordinates = new Vector2(2739782.97f, 1250944.04f);
+    [SerializeField] private double debugLv95CoordinatesNorth = 2743009.24f;
+    [SerializeField] private double debugLv95CoordinatesEast = 1252728.11f;
     [SerializeField] private float locationDesiredAccuracyMeters = 5f;
     [SerializeField] private float locationUpdateDistanceMeters = 0.5f;
     [SerializeField] private float locationServiceTimeoutSeconds = 20f;
+
+
+    [SerializeField] private bool createMeshForBuildings = false;
 
     [SerializeField] private GeoObjectSpawner buildingspawner;
 
@@ -75,9 +86,9 @@ public class GeoInfoAPIConnector : MonoBehaviour
     {
         if (useDebugCoordinates)
         {
-            Debug.Log($"GeoInfo API: using debug LV95 coordinates {debugLv95Coordinates.x}, {debugLv95Coordinates.y}");
+            Debug.Log($"GeoInfo API: using debug LV95 coordinates {debugLv95CoordinatesNorth}, {debugLv95CoordinatesEast}");
 
-            ProjNetTransformCH.LV95ToWGS84(debugLv95Coordinates.x, debugLv95Coordinates.y, out double lat, out double lon);
+            ProjNetTransformCH.LV95ToWGS84(debugLv95CoordinatesNorth, debugLv95CoordinatesEast, out double lat, out double lon);
             yield return FetchProjectedFeatures(lat, lon, onCompleted);
             yield break;
         }
@@ -108,6 +119,8 @@ public class GeoInfoAPIConnector : MonoBehaviour
             onCompleted?.Invoke(new List<ProjectedBuilding>());
             yield break;
         }
+
+        Debug.Log($"GeoInfo API curl: curl -X GET \"{requestUrl}\"");
 
         using (var request = UnityWebRequest.Get(requestUrl))
         {
@@ -234,16 +247,19 @@ public class GeoInfoAPIConnector : MonoBehaviour
 
             foreach (var feature in featureElements)
             {
-                var gebVersNr = feature.Elements().FirstOrDefault(e => string.Equals(e.Name.LocalName, "a111_avdm01_projboden_fla_gebversnr", StringComparison.OrdinalIgnoreCase))?.Value?.Trim() ?? string.Empty;
+                var egid = feature.Elements().FirstOrDefault(e => string.Equals(e.Name.LocalName, "a111_avdm01_projboden_fla_gwr_egid", StringComparison.OrdinalIgnoreCase))?.Value?.Trim() ?? string.Empty;
                 var gebHauptNutzung = feature.Elements().FirstOrDefault(e => string.Equals(e.Name.LocalName, "a111_avdm01_projboden_fla_gebhauptnutzung", StringComparison.OrdinalIgnoreCase))?.Value?.Trim() ?? string.Empty;
                 var coordinates = feature.Descendants().FirstOrDefault(e => string.Equals(e.Name.LocalName, "coordinates", StringComparison.OrdinalIgnoreCase))?.Value?.Trim() ?? string.Empty;
+                var nbident = feature.Elements().FirstOrDefault(e => string.Equals(e.Name.LocalName, "a111_avdm01_projboden_fla_nbident", StringComparison.OrdinalIgnoreCase))?.Value?.Trim() ?? string.Empty;
+                var gebVersNr = feature.Elements().FirstOrDefault(e => string.Equals(e.Name.LocalName, "a111_avdm01_projboden_fla_gebversnr", StringComparison.OrdinalIgnoreCase))?.Value?.Trim() ?? string.Empty;
+
 
                 if (string.IsNullOrEmpty(gebVersNr) && string.IsNullOrEmpty(gebHauptNutzung) && string.IsNullOrEmpty(coordinates))
                 {
                     continue;
                 }
 
-                results.Add(new ProjectedBuilding(gebVersNr, gebHauptNutzung, coordinates));
+                results.Add(new ProjectedBuilding(egid, gebHauptNutzung, coordinates, nbident, gebVersNr));
             }
         }
         catch (Exception ex)
@@ -268,10 +284,12 @@ public class GeoInfoAPIConnector : MonoBehaviour
         foreach (var building in buildings)
         {
             Debug.Log(building.ToString());
-
-            if (buildingspawner != null && !string.IsNullOrWhiteSpace(building.Coordinates))
+            if (createMeshForBuildings)
             {
-                buildingspawner.TrySpawnBuildingGeometry(building.Coordinates, building.GebVersNr, out _, false);
+                if (buildingspawner != null && !string.IsNullOrWhiteSpace(building.Coordinates))
+                {
+                    buildingspawner.TrySpawnBuildingGeometry(building.Coordinates, building.Egid, out _, false);
+                }
             }
         }
     }

@@ -18,16 +18,18 @@ public class GeoObjectSpawner : MonoBehaviour
     public double north = 1250944.04;
 
     [Header("Cube Settings")]
+    [SerializeField] private bool createCube = false;
     [Tooltip("Size of the cube in meters (larger = more visible from distance)")]
     public float cubeSize = 5.0f;
     [Tooltip("Cube height in meters (Y scale)")]
     public float cubeHeightMeters = 5f;
-    [SerializeField] private Material cubeMaterial; 
-    [SerializeField] private bool instanceMaterial = true; 
+    [SerializeField] private Material cubeMaterial;
+    [SerializeField] private bool instanceMaterial = true;
 
-    [Header("Building Geometry (optional)")]
+
+    [Header("Building Geometry")]
     [Tooltip("If provided, CreateBuilding will be used instead of a primitive cube.")]
-    [SerializeField] private bool useBuildingGeometry = false;
+    [SerializeField] private bool useBuildingGeometryFromTextField = false;
     [SerializeField, TextArea(4, 10)] private string buildingCoordinatesLv95;
     [SerializeField] private string buildingName = "Manual";
     [SerializeField, Tooltip("Clear existing factory-spawned buildings before creating a new one.")]
@@ -186,21 +188,20 @@ public class GeoObjectSpawner : MonoBehaviour
 
     private void SpawnGeoObject()
     {
-        if (useBuildingGeometry && TrySpawnBuildingGeometry(buildingCoordinatesLv95, buildingName, out var buildingGo, clearExistingFactoryBuildings))
+        if (useBuildingGeometryFromTextField)
         {
-            _spawnedObject = buildingGo;
+            TrySpawnBuildingGeometry(buildingCoordinatesLv95, buildingName, out var buildingGo, clearExistingFactoryBuildings);
             _spawnedIsBuilding = true;
+            _spawnedObject = buildingGo;
             return;
         }
 
-        if (useBuildingGeometry)
+        if (createCube)
         {
-            Debug.LogWarning("[GeoObjectSpawner] Building geometry data missing or invalid; falling back to cube.");
+            var cube = SpawnCubeInternal();
+            _spawnedObject = cube;
+            _spawnedIsBuilding = false;
         }
-
-        var cube = SpawnCubeInternal();
-        _spawnedObject = cube;
-        _spawnedIsBuilding = false;
     }
 
     private GameObject SpawnCubeInternal()
@@ -293,12 +294,6 @@ public class GeoObjectSpawner : MonoBehaviour
     }
     public void SetCubeHeightMeters(float h)
     {
-        if (useBuildingGeometry)
-        {
-            Debug.Log("[GeoObjectSpawner] Height slider ignored while building geometry is active.");
-            return;
-        }
-
         cubeHeightMeters = Mathf.Max(0.01f, h);
         if (_spawnedObject != null && !_spawnedIsBuilding)
         {

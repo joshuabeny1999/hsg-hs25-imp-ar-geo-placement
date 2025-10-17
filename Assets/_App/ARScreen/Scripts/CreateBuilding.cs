@@ -15,16 +15,10 @@ public class CreateBuilding : MonoBehaviour
     [Header("Rendering")]
     [SerializeField, Tooltip("Material assigned to every generated building mesh.")]
     private Material buildingMaterial;
-    [SerializeField, Tooltip("Texture UV scale for the building top surface.")]
-    private Vector2 uvScale = new Vector2(0.1f, 0.1f);
     [SerializeField, Tooltip("Extruded thickness applied to spawned buildings (meters).")]
     private float height = 1f;
 
   
-    /// <summary>
-    /// Creates a building purely from a coordinate loop ("x,y x,y ...") without additional metadata.
-    /// The returned instance contains placement data; the caller must anchor the GameObject.
-    /// </summary>
     public BuildingInstance CreateBuildingFromCoordinates(string coordinates, string name = "Manual", float? altitudeOverride = null, bool? clearExistingOverride = null)
     {
         if (!TryParseLv95Loop(coordinates, out var points, out var areaSign))
@@ -112,10 +106,10 @@ public class CreateBuilding : MonoBehaviour
         bool includeSides = clampedThickness > 0.0001f;
         float polygonArea = SignedArea(polygon);
 
-        var vertices = new List<Vector3>(count * (includeSides ? 4 : 2));
+        var vertices = new List<Vector3>(count + (includeSides ? count * 4 : 0));
         var normals = new List<Vector3>(vertices.Capacity);
         var uvs = new List<Vector2>(vertices.Capacity);
-        var meshTriangles = new List<int>(triangles.Count * 2 + (includeSides ? count * 6 : 0));
+        var meshTriangles = new List<int>(triangles.Count + (includeSides ? count * 6 : 0));
 
         // Top surface (facing up)
         for (int i = 0; i < count; i++)
@@ -123,7 +117,9 @@ public class CreateBuilding : MonoBehaviour
             Vector2 p = polygon[i];
             vertices.Add(new Vector3(p.x, halfThickness, p.y));
             normals.Add(Vector3.up);
-            uvs.Add(new Vector2(p.x * uvScale.x, p.y * uvScale.y));
+            // Think of changing possible to uvs.Add(new Vector2(p.x * uvScale.x, p.y * uvScale.y)); 
+            // To map texture properly on larger buildings
+            uvs.Add(p);
         }
 
         for (int i = 0; i < triangles.Count; i += 3)
@@ -146,39 +142,6 @@ public class CreateBuilding : MonoBehaviour
             meshTriangles.Add(first);
             meshTriangles.Add(topSecond);
             meshTriangles.Add(topThird);
-        }
-
-        // Bottom surface (facing down)
-        int bottomStart = vertices.Count;
-        for (int i = 0; i < count; i++)
-        {
-            Vector2 p = polygon[i];
-            vertices.Add(new Vector3(p.x, -halfThickness, p.y));
-            normals.Add(Vector3.down);
-            uvs.Add(new Vector2(p.x * uvScale.x, p.y * uvScale.y));
-        }
-
-        for (int i = 0; i < triangles.Count; i += 3)
-        {
-            int first = triangles[i];
-            int second = triangles[i + 1];
-            int third = triangles[i + 2];
-
-            int bottomFirst = bottomStart + first;
-            int bottomSecond = bottomStart + third;
-            int bottomThird = bottomStart + second;
-
-            Vector3 vba = vertices[bottomFirst];
-            Vector3 vbb = vertices[bottomSecond];
-            Vector3 vbc = vertices[bottomThird];
-            if (Vector3.Cross(vbb - vba, vbc - vba).y >= 0f)
-            {
-                (bottomSecond, bottomThird) = (bottomThird, bottomSecond);
-            }
-
-            meshTriangles.Add(bottomFirst);
-            meshTriangles.Add(bottomSecond);
-            meshTriangles.Add(bottomThird);
         }
 
         if (includeSides)
@@ -416,7 +379,6 @@ public class CreateBuilding : MonoBehaviour
             return false;
         }
 
-        // Remove duplicate closing vertex if present
         var first = points[0];
         var last = points[^1];
         if (Math.Abs(first.East - last.East) < 0.001 && Math.Abs(first.North - last.North) < 0.001)
@@ -472,10 +434,6 @@ public class CreateBuilding : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Result data for a generated building mesh. Contains the spawned GameObject and
-    /// its geo-reference so that callers can anchor it in world space.
-    /// </summary>
     public sealed class BuildingInstance
     {
         public GameObject GameObject { get; }
