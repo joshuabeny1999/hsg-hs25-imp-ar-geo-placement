@@ -9,6 +9,26 @@ using UnityEngine;
 using UnityEngine.Networking;
 using Shared.Scripts.Geo;
 
+[Serializable]
+public class ProjectedBuilding
+{
+    public string GebVersNr { get; }
+    public string GebHauptNutzung { get; }
+    public string Coordinates { get; }
+
+    public ProjectedBuilding(string gebVersNr, string gebHauptNutzung, string coordinates)
+    {
+        GebVersNr = gebVersNr;
+        GebHauptNutzung = gebHauptNutzung;
+        Coordinates = coordinates;
+    }
+
+    public override string ToString()
+    {
+        return $"{GebVersNr}; {GebHauptNutzung}; Coordinates={Coordinates}";
+    }
+}
+
 public class GeoInfoAPIConnector : MonoBehaviour
 {
     [Header("Geoportal WFS Settings")]
@@ -17,8 +37,7 @@ public class GeoInfoAPIConnector : MonoBehaviour
     [SerializeField] private int maxFeatureCount = 1000000;
     [SerializeField, Tooltip("Width/height of the square bounding box centered around the player in meters.")]
     private float boundingBoxSizeMeters = 300f;
-    [SerializeField] private string authorizationHeader = "Basic [[ENTER YOUR CREDENTIALS HERE]]";
-    [SerializeField] private string userAgent = "Mozilla/5.0 QGIS/34403/Windows 10 Version 2009";
+    
     [Header("Debug Settings")]
     [SerializeField, Tooltip("Use manual LV95 coordinates instead of the device GPS (for in-editor testing).")]
     private bool useDebugCoordinates = false;
@@ -28,12 +47,14 @@ public class GeoInfoAPIConnector : MonoBehaviour
     [SerializeField] private float locationUpdateDistanceMeters = 0.5f;
     [SerializeField] private float locationServiceTimeoutSeconds = 20f;
 
+    [SerializeField] private GeoObjectSpawner buildingspawner;
+
     private const string StatusFilter = "projektiert";
     private const string SrsName = "urn:ogc:def:crs:EPSG::2056";
 
     private bool _locationInitialized;
 
-    public event Action<List<string>> ProjectedFeaturesFetched;
+    public event Action<List<ProjectedBuilding>> ProjectedFeaturesFetched;
 
     private void Start()
     {
@@ -45,12 +66,12 @@ public class GeoInfoAPIConnector : MonoBehaviour
         StartCoroutine(FetchProjectedFeatures(null));
     }
 
-    public void RefreshProjectedFeatures(Action<List<string>> onCompleted)
+    public void RefreshProjectedFeatures(Action<List<ProjectedBuilding>> onCompleted)
     {
         StartCoroutine(FetchProjectedFeatures(onCompleted));
     }
 
-    public IEnumerator FetchProjectedFeatures(Action<List<string>> onCompleted)
+    public IEnumerator FetchProjectedFeatures(Action<List<ProjectedBuilding>> onCompleted)
     {
         if (useDebugCoordinates)
         {
@@ -68,7 +89,7 @@ public class GeoInfoAPIConnector : MonoBehaviour
             if (!_locationInitialized)
             {
                 Debug.LogWarning("GeoInfo API: location service still not running; aborting fetch.");
-                onCompleted?.Invoke(new List<string>());
+                onCompleted?.Invoke(new List<ProjectedBuilding>());
                 yield break;
             }
         }
@@ -77,37 +98,28 @@ public class GeoInfoAPIConnector : MonoBehaviour
         yield return FetchProjectedFeatures(lastKnown.latitude, lastKnown.longitude, onCompleted);
     }
 
-    public IEnumerator FetchProjectedFeatures(double latitude, double longitude, Action<List<string>> onCompleted)
+    public IEnumerator FetchProjectedFeatures(double latitude, double longitude, Action<List<ProjectedBuilding>> onCompleted)
     {
         var requestUrl = BuildServiceUrl(latitude, longitude);
 
         if (string.IsNullOrWhiteSpace(requestUrl))
         {
             Debug.LogError("GeoInfo API: service URL is not configured.");
-            onCompleted?.Invoke(new List<string>());
+            onCompleted?.Invoke(new List<ProjectedBuilding>());
             yield break;
         }
 
         using (var request = UnityWebRequest.Get(requestUrl))
         {
-            if (!string.IsNullOrWhiteSpace(authorizationHeader))
-            {
-                request.SetRequestHeader("Authorization", authorizationHeader);
-            }
-
-            if (!string.IsNullOrWhiteSpace(userAgent))
-            {
-                request.SetRequestHeader("User-Agent", userAgent);
-            }
-
+ 
             yield return request.SendWebRequest();
             var hasError = request.result != UnityWebRequest.Result.Success;
 
             if (hasError)
             {
                 Debug.LogError($"GeoInfo API request failed: {request.error}");
-                HandleFetchResults(new List<string>());
-                onCompleted?.Invoke(new List<string>());
+                HandleFetchResults(new List<ProjectedBuilding>());
+                onCompleted?.Invoke(new List<ProjectedBuilding>());
                 yield break;
             }
 
@@ -201,9 +213,9 @@ public class GeoInfoAPIConnector : MonoBehaviour
         }
     }
 
-    private List<string> ParseProjectedFeatures(string xml)
+    private List<ProjectedBuilding> ParseProjectedFeatures(string xml)
     {
-        var results = new List<string>();
+        var results = new List<ProjectedBuilding>();
 
         if (string.IsNullOrWhiteSpace(xml))
         {
@@ -231,7 +243,7 @@ public class GeoInfoAPIConnector : MonoBehaviour
                     continue;
                 }
 
-                results.Add($"{gebVersNr}; {gebHauptNutzung}; {coordinates}");
+                results.Add(new ProjectedBuilding(gebVersNr, gebHauptNutzung, coordinates));
             }
         }
         catch (Exception ex)
@@ -242,20 +254,25 @@ public class GeoInfoAPIConnector : MonoBehaviour
         return results;
     }
 
-    private void HandleFetchResults(List<string> lines)
+    private void HandleFetchResults(List<ProjectedBuilding> buildings)
     {
-        ProjectedFeaturesFetched?.Invoke(lines);
+        ProjectedFeaturesFetched?.Invoke(buildings);
 
-        if (lines == null || lines.Count == 0)
+        if (buildings == null || buildings.Count == 0)
         {
             Debug.Log("GeoInfo API: no projected features found.");
             return;
         }
 
-        Debug.Log($"GeoInfo API: fetched {lines.Count} projected features.");
-        foreach (var line in lines)
+        Debug.Log($"*****GeoInfo API: fetched {buildings.Count} projected features.*****");
+        foreach (var building in buildings)
         {
-            Debug.Log(line);
+            Debug.Log(building.ToString());
+
+            if (buildingspawner != null && !string.IsNullOrWhiteSpace(building.Coordinates))
+            {
+                buildingspawner.TrySpawnBuildingGeometry(building.Coordinates, building.GebVersNr, out _, false);
+            }
         }
     }
 }
