@@ -1,12 +1,11 @@
 using UnityEngine;
-using UnityEngine.Networking;
 using Niantic.Lightship.AR.WorldPositioning;
 using System.Collections;
 using Shared.Scripts.Geo; 
 
 /// <summary>
 /// Simple spawner that places a cube at a specific GPS location
-/// Fetches real-world altitude from Open-Elevation API
+/// Supports selecting altitude from the device sensor or the Open-Elevation API (comment toggle)
 /// </summary>
 public class GeoObjectSpawner : MonoBehaviour
 {
@@ -17,7 +16,7 @@ public class GeoObjectSpawner : MonoBehaviour
     [Header("LV95 Coordinates (EPSG:2056)")]
     public double east = 2739782.97;
     public double north = 1250944.04;
-    
+
     [Header("Cube Settings")]
     [Tooltip("Size of the cube in meters (larger = more visible from distance)")]
     public float cubeSize = 5.0f;
@@ -77,15 +76,56 @@ public class GeoObjectSpawner : MonoBehaviour
             Debug.Log($"WPS available: {wpsManager.IsAvailable}");
         }
 
-        // proceed as before
-        yield return StartCoroutine(FetchAltitudeAndSpawn());
+        // Toggle altitude source by commenting/uncommenting the desired line below.
+        yield return StartCoroutine(FetchAltitudeFromDevice());
+        // yield return StartCoroutine(FetchAltitudeFromApi());
+
+        SpawnCube();
+    }
+
+    /// <summary>
+    /// Fetches real-world altitude from Device GPS sensor
+    /// </summary>
+    private IEnumerator FetchAltitudeFromDevice()
+    {
+        if (!Input.location.isEnabledByUser)
+        {
+            Debug.LogWarning("[GeoObjectSpawner] Device location services disabled using default altitude 0m");
+            yield break;
+        }
+
+        var status = Input.location.status;
+        if (status == LocationServiceStatus.Stopped)
+        {
+            Input.location.Start(1f, 0.5f);
+            status = Input.location.status;
+        }
+
+        float elapsed = 0f;
+        float locationTimeout = 10f;
+        while ((status == LocationServiceStatus.Initializing || status == LocationServiceStatus.Stopped) && elapsed < locationTimeout)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+            status = Input.location.status;
+        }
+
+        if (status == LocationServiceStatus.Running)
+        {
+            _altitudeMeters = Input.location.lastData.altitude;
+            Debug.Log($"[GeoObjectSpawner] Altitude received from device sensor: {_altitudeMeters}m");
+        }
+        else
+        {
+            Debug.LogWarning("[GeoObjectSpawner] Location service unavailable using default altitude 0m");
+        }
     }
 
     /// <summary>
     /// Fetches real-world altitude from Open-Elevation API
     /// API: https://open-elevation.com/
     /// </summary>
-    private IEnumerator FetchAltitudeAndSpawn()
+    private IEnumerator FetchAltitudeFromApi()
     {
         yield return GeoInfoAPI.FetchElevation(east, north, resp =>
         {
@@ -96,13 +136,9 @@ public class GeoObjectSpawner : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("[GeoObjectSpawner] Failed to fetch altitude – using default 0m");
+                Debug.LogWarning("[GeoObjectSpawner] Failed to fetch altitude using default 0m");
             }
-
-            SpawnCube();
         });
-
-        SpawnCube();
     }
     
     private void AddBillboardLabel(Transform parent, string text = "↓ This is a Demo Cube ↓")
@@ -141,7 +177,7 @@ public class GeoObjectSpawner : MonoBehaviour
         // Position at GPS location
         positioningHelper.AddOrUpdateObject(_cube, lat, lon, _altitudeMeters, Quaternion.identity);
         
-        Debug.Log($"[GeoObjectSpawner] Cube spawned at GPS: {lat}, {lon} | Altitude: {_altitudeMeters}m (API) | Size: {cubeSize}m | Height: {cubeHeightMeters}m");
+        Debug.Log($"[GeoObjectSpawner] Cube spawned at GPS: {lat}, {lon} | Altitude: {_altitudeMeters}m | Size: {cubeSize}m | Height: {cubeHeightMeters}m");
         
         AddBillboardLabel(_cube.transform);
     }
