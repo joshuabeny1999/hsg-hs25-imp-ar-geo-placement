@@ -138,11 +138,7 @@ public class GeoObjectSpawner : MonoBehaviour
             {
                 Debug.LogWarning("[GeoObjectSpawner] Failed to fetch altitude using default 0m");
             }
-
-            SpawnCube();
         });
-
-        SpawnCube();
     }
     
     private void AddBillboardLabel(Transform parent, string text = "↓ This is a Demo Cube ↓")
