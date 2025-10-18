@@ -46,11 +46,11 @@ void Start() {
   // Optional: Name und Höhe
     var b = creator.CreateBuildingFromCoordinates(coords, name: "TestSquare", altitudeOverride: 0f);
 
-  // Die Positionierung im Weltraum machst du selbst (dieses Skript baut nur lokale Geometrie).
+  // Die Positionierung im world space machst du selbst (dieses Skript baut nur lokale Geometrie).
     if (b != null)
     {
         b.GameObject.transform.position = new Vector3(0, 0, 0);
-    // Optional: Drehung/Skalierung an deine AR-Referenz anpassen.
+  // Optional: rotation/scale an deine AR-Referenz anpassen.
     }
 }
 ```
@@ -89,7 +89,7 @@ void Start() {
 
 - Input: LV95 (Schweizer Projektion) in Metern (Ost/Nord).
 - Internes Mesh: Lokaler Raum um das Zentrum. Das Polygon liegt in der XZ-Ebene: X = Ost-Offset, Z = Nord-Offset, Y zeigt nach oben.
-- Output: Unity-`GameObject` (lokal unterhalb des `CreateBuilding`-Objekts). Den Weltraum-Transform bestimmst du.
+- Output: Unity-`GameObject` (lokal unterhalb des `CreateBuilding`-Objekts). Den world-space Transform bestimmst du.
 - Geo-Metadaten: WGS84 Lat/Lon aus dem Zentrum (z. B. für AR-Anker oder UI).
 
 
@@ -99,7 +99,7 @@ Hier die Kernideen mit etwas mehr Detail und weiterhin in verständlicher Sprach
 
 ### 1) Vorzeichen der Polygonfläche (Orientierung)
 
-Warum wichtig? Die Orientierung (CCW vs. CW) beeinflusst, wie Dreiecke gewunden werden und in welche Richtung Normalen zeigen. Falsche Orientierung → falsche Normalen/Seiten.
+Warum wichtig? Die Orientierung (CCW (counter-clockwise) vs. CW (clockwise)) beeinflusst, wie Dreiecke gewunden werden und in welche Richtung Normalen zeigen. Falsche Orientierung → falsche Normalen/Seiten.
 
 Formel (für Punkte `$p_i=(x_i,y_i)$`):
 
@@ -107,9 +107,15 @@ $$
 A = \frac{1}{2} \sum_{i=0}^{n-1} (x_i y_{i+1} - x_{i+1} y_i)
 $$
 
+Notation (damit keine Variable unerklärt bleibt):
+- `A` ist die vorzeichenbehaftete Fläche des Polygons in Quadratmetern (m²). `A > 0` bedeutet CCW (counter-clockwise), `A < 0` bedeutet CW (clockwise).
+- `n` ist die Anzahl der Polygonpunkte.
+- `(x_i, y_i)` sind die 2D-Koordinaten des i-ten Punkts (je nach Kontext LV95 in Metern oder lokalisierte Offsets).
+- `i+1` wird modulo `n` verstanden (d. h. nach dem letzten Punkt kommt wieder der erste).
+
 Lesart:
-- `A > 0` → Punkte laufen gegen den Uhrzeigersinn (CCW)
-- `A < 0` → im Uhrzeigersinn (CW)
+- `A > 0` → Punkte laufen gegen den Uhrzeigersinn (CCW (counter-clockwise))
+- `A < 0` → im Uhrzeigersinn (CW (clockwise))
 
 Im Code: `SignedArea(Vector2)` und `ComputeSignedArea(Lv95Point)` (gleiche Logik). Das Vorzeichen wird später genutzt, um Seiten-Normalen ggf. zu flippen.
 
@@ -126,6 +132,11 @@ $$
 \bar{y} = \frac{1}{6A} \sum_{i=0}^{n-1} (y_i + y_{i+1})(x_i y_{i+1} - x_{i+1} y_i)
 $$
 
+Hinweis zur Notation:
+- `A` ist die oben definierte vorzeichenbehaftete Fläche.
+- `\bar{x}`, `\bar{y}` sind die Koordinaten des Schwerpunkts (Centroid) in denselben Einheiten wie `(x_i, y_i)`.
+- Der Index `i+1` ist wieder modulo `n`.
+
 Sonderfall: Ist `|A|` sehr klein (quasi Linie/Punkt), nehmen wir einfach den Mittelwert der Punkte.
 
 ### 3) Triangulation (Ear-Clipping) — genauer erklärt
@@ -137,27 +148,53 @@ Begriffe:
 - Ohr: Das Dreieck `(prev, cur, next)` an einer konvexen Ecke, in dessen Innerem KEIN weiterer Polygonpunkt liegt.
 
 Ablauf Schritt für Schritt:
-1. Wir stellen sicher, dass die Indizes CCW sortiert sind (über das Flächenvorzeichen).
+1. Wir stellen sicher, dass die Indizes CCW (counter-clockwise) sortiert sind (über das Flächenvorzeichen).
 2. Für jeden Eckpunkt prüfen wir:
-  - Konvexitätstest: `(b - a) x (c - b)` soll positiv sein (bei CCW-Orientierung). Sonst ist es eine Reflex-Ecke → kein Ohr.
+  - Konvexitätstest: `(b - a) x (c - b)` soll positiv sein (bei CCW (counter-clockwise)-Orientierung). Sonst ist es eine Reflex-Ecke → kein Ohr.
   - Punkt-im-Dreieck-Test: Kein anderer verfügbarer Polygonpunkt darf im Dreieck `(a,b,c)` liegen. Dafür wird baryzentrische Prüfung genutzt (`PointInTriangle`).
 3. Finden wir ein Ohr, fügen wir das Dreieck zu den Ergebnissen hinzu und entfernen den mittleren Index `cur` aus der Liste.
 4. Weiter, bis nur noch zwei Kanten übrig sind (dann sind alle Dreiecke gefunden) oder bis eine Sicherheitsgrenze erreicht ist.
 
 Komplexität: Typisch `O(n^2)` für n Punkte (für Gebäudegrundrisse völlig ausreichend).
 
-Typische Fehlerfälle und Abhilfe:
-- Numerische Degeneration (fast kollineare Punkte): Ohren werden schwer zu erkennen → der Code hat eine Guard/Abbruchbedingung.
-- Stark eingedellte (nicht-konvexe) Polygone: Ear-Suche kann stocken → es gibt einen Fallback (Triangle-Fan), der bei konvexen Formen gut funktioniert.
-- Doppelte/nahezu gleiche Punkte: Können zu sehr kurzen Kanten führen → Seitenaufbau überspringt solche Kanten; Parser entfernt doppelte Endpunkte.
+Typische Fehlerfälle und Abhilfe (ausführlich):
+- Numerische Degeneration (fast kollineare Punkte):
+  - Problem: Konvexe Ecken werden numerisch „flach“ → Kreuzprodukt nähert sich 0, IsEar wird unsicher.
+  - Abhilfe: Der Code besitzt eine Guard/Abbruchbedingung (z. B. max. Iterationen). Zusätzlich hilft Vorverarbeitung: sehr nahe Punkte zusammenfassen (Epsilon-Snap), nahezu identische Kanten entfernen.
+- Stark eingedellte (nicht-konvexe) Polygone:
+  - Problem: Es gibt länger keine gültigen Ohren, weil viele Reflex-Ecken vorhanden sind.
+  - Abhilfe: Fallback (Triangle-Fan). Für konvexe Polygone liefert er korrekte Triangles; bei stark nicht-konvexen Formen ist er nur eine Notlösung.
+- Doppelte/nahezu gleiche Punkte:
+  - Problem: Sehr kurze Kanten → Seitenaufbau erzeugt winzige/doppelte Dreiecke oder degenerierte Quads.
+  - Abhilfe: Parser entfernt doppelte Endpunkte; Seitenaufbau überspringt 0-Längen-Kanten.
 
-Im Code relevant:
-- `TriangulatePolygon` steuert den Ohr-Such-Loop mit einer Schutzvariable (`guard`).
-- `IsEar` prüft Konvexität und „kein Punkt im Ohr-Dreieck“.
-- `PointInTriangle` nutzt baryzentrische Koordinaten und eine Toleranz gegen numerisches Rauschen.
-- Fallback: `TriangleFan` erzeugt Dreiecke `(0, i, i+1)` für i=1..n-2.
+Triangle-Fan — was ist das, wann wird er genutzt?
+- Idee: Ein Fixpunkt (hier Index 0) wird mit jedem aufeinanderfolgenden Kantenpaar verbunden → Dreiecke `(0, i, i+1)` für `i = 1 .. n-2`.
+- Geeignet für: Konvexe Polygone oder Polygone, die in Fan-Richtung keine Selbstüberschneidungen erzeugen.
+- Vorteile: Sehr einfach, fehlertolerant, keine Ear-Suche notwendig.
+- Nachteile: Bei nicht-konvexen Polygoneilen können Dreiecke außerhalb des eigentlichen Polygons liegen (geometrisch falsch) oder Überschneidungen erzeugen.
+- Winding/Orientierung: Bleibt bei CCW (counter-clockwise)-Eckpunktreihenfolge erhalten. Ist die Reihenfolge CW (clockwise), müssen Indizes gespiegelt oder vorab die Orientierung korrigiert werden (im Code passiert die Orientierungskorrektur bereits zuvor über das Flächenvorzeichen).
+- Einsatz im Code: Nur als Fallback, wenn Ear-Clipping nicht die erwartete Anzahl von Dreiecken liefert (z. B. wegen numerischer Probleme). Besser ein grob korrektes Ergebnis als gar keines, besonders für einfache Grundrisse.
+
+Im Code relevant (mehr Details):
+- `TriangulatePolygon`:
+  - Steuert den Ohr-Such-Loop mit einer Schutzvariable (`guard`), damit wir nicht unendlich iterieren.
+  - Erwartete Dreiecksanzahl ist `(n-2)`. Wird sie nicht erreicht, wird der Fallback aktiviert.
+- `IsEar`:
+  - Konvexitätstest per Kreuzprodukt. Ein kleiner Epsilon-Spielraum verhindert Fehleinstufungen bei nahezu kollinearen Punkten.
+  - Punkt-im-Dreieck-Test stellt sicher, dass kein verfügbarer Punkt innerhalb des Kandidatendreiecks liegt (verhindert Überschneidungen).
+- `PointInTriangle`:
+  - Baryzentrische Prüfung; wenn der Nenner (Doppelfläche) zu klein ist, gilt das Dreieck als degeneriert.
+  - Nutzt Toleranzen (z. B. `1e-6`) gegen numerisches Rauschen.
+- Fallback `TriangleFan`:
+  - Bildet Dreiecke `(0, i, i+1)` für `i = 1 .. n-2`.
+  - Erwartet sinnvolle Eckpunktreihenfolge (idealerweise CCW (counter-clockwise)) für korrekte Winding/Normalen.
 
 ### 4) Extrusion & Normalen
+
+Weiterführende Ressourcen:
+- Ear Clipping Overview (YouTube): https://www.youtube.com/watch?v=QAdfkylpYwc&pp=ygUMZWFyIGNsaXBwaW5n
+- Punkt-im-Dreieck-Tests (Kreuzprodukt, baryzentrisch, anschaulich erklärt): https://claude.ai/public/artifacts/472e7a2e-e102-4489-a7f1-b512d01a7d5a
 
 - Deckfläche: entsteht direkt aus den Triangles der Triangulation, auf `y = +H/2`. Normalen = `Vector3.up`.
 - Seiten: Für jede Polygonkante bauen wir ein Rechteck aus vier Punkten (oben/unten) und zerlegen es in zwei Dreiecke. Die Seitennormale ist senkrecht zur Kante und zeigt nach außen. Falls die Gesamt-Orientierung negativ ist, wird die Normale geflippt.
@@ -183,7 +220,7 @@ Im Code relevant:
   - Seitenflächen haben einfache `[0..1]`-Streifen pro Kante.
 - Normalen: Oben nach oben; an den Seiten pro Kante nach außen. Bounds werden am Ende neu berechnet.
 
-Verbesserungsvorschlag (einfach, wenig Risiko): UV-Skalierung als Feld z. B. `Vector2 uvScale = new(0.1f, 0.1f)` und Top-UVs als `(p.x * uvScale.x, p.y * uvScale.y)` mappen.
+ 
 
 
 ## Vertrag und Zuständigkeiten
@@ -195,7 +232,7 @@ Verbesserungsvorschlag (einfach, wenig Risiko): UV-Skalierung als Feld z. B. `Ve
   - `BuildingInstance` bei Erfolg, sonst `null`.
   - Erzeugtes Kind-`GameObject` namens `ProjectedBuilding_<name>` (oder generisch).
 - Deine Aufgaben
-  - Welt-Transform setzen (Position/Rotation/Skalierung).
+  - world-space Transform setzen (Position/Rotation/Skalierung).
   - Höhe/AR-Anker im Gesamtsystem berücksichtigen (dieses Skript speichert `AltitudeMeters`, setzt die Y-Position aber nicht automatisch).
 
 
@@ -203,16 +240,10 @@ Verbesserungsvorschlag (einfach, wenig Risiko): UV-Skalierung als Feld z. B. `Ve
 
 - `ProjNetTransformCH.LV95ToWGS84(east, north, out lat, out lon)`
   - Wandelt LV95 (Meter) in WGS84 (Lat/Lon) um.
-  - Ergebnis wird in `BuildingInstance` gespeichert (z. B. für AR-Anker/Labels). Das Unity-Transform wird hier nicht daraus gesetzt.
+  - Ergebnis wird in `BuildingInstance` gespeichert (z. B. für AR-Anker/Labels). Das Unity Transform wird hier nicht daraus gesetzt.
 
 
-## Erweiterungsideen (sicher umsetzbar)
-
-- Boden schließen (Deckfläche bei `-h/2` spiegeln, Winding flippen, Dreiecke hinzufügen).
-- UV-Skalierung für Deckfläche (saubere Wiederholung großer Texturen).
-- Variable Höhe pro Gebäude (Parameter statt nur serialisiertes Feld).
-- Innenringe/„Holes“ unterstützen (aktuelles Ear-Clipping geht von einfachem Polygon ohne Löcher aus).
-- Optionale Vertexfarben oder zweite UVs (Lightmapping).
+ 
 
 
 ## Troubleshooting-Checkliste
@@ -259,3 +290,25 @@ Verbesserungsvorschlag (einfach, wenig Risiko): UV-Skalierung als Feld z. B. `Ve
 ---
 
 Hinweis für Maintainer: Dieser Report deckt Intention, Mathe und Verhalten von `CreateBuilding.cs` ab, damit du sicher UVs/Materialien anpasst, einen Boden ergänzt oder die Triangulation austauschst.
+
+
+## Anhang C — Feature-Matrix (Implementierter Stand)
+
+| Feature | Implementiert | Hinweis |
+| --- | --- | --- |
+| LV95-Parsing (String → Punkte) | Ja | Duplikat des Endpunkts wird entfernt, Format „east,north“ mit Leerzeichen zwischen Punkten |
+| Schwerpunktberechnung (LV95) | Ja | Flächenformel; Fallback auf Punktmittelwert bei nahezu 0-Fläche |
+| WGS84-Umrechnung (Lat/Lon) | Ja | `ProjNetTransformCH.LV95ToWGS84` auf Schwerpunkt |
+| Lokalisierung ins XZ (lokaler Raum) | Ja | Zentrieren um Schwerpunkt, X=Ost-Offset, Z=Nord-Offset |
+| Triangulation (Ear-Clipping) | Ja | Mit Guard und „IsEar“/`PointInTriangle`; Orientierung wird beachtet |
+| Fallback Triangulation (Triangle-Fan) | Ja | Wenn nicht `(n-2)` Dreiecke erreicht werden |
+| Extrusion (Deckfläche) | Ja | Auf `y=+H/2`, Normalen nach oben |
+| Seitenflächen | Ja | Nur bei signifikanter `height`; 0-Längen-Kanten werden übersprungen |
+| Bodenfläche (Bottom Cap) | Nein | Nicht implementiert |
+| Materialzuweisung | Ja | `MeshRenderer` nutzt `buildingMaterial` (falls gesetzt) |
+| UVs Deckfläche | Ja | Planar aus lokalen `(x,z)` (Meter) |
+| UVs Seiten | Ja | Einfache Streifen pro Kante |
+| MeshCollider | Ja | Collider wird am erzeugten GameObject gesetzt |
+| Orientierungskorrektur (CCW/CW) | Ja | Über vorzeichenbehaftete Fläche; wirkt sich auf Winding/Normalen aus |
+| Unterstützung für Löcher (Holes) | Nein | Nicht implementiert |
+| Optionale Vorverarbeitung (Snap/Dedupe) | Nein | Nicht implementiert |
