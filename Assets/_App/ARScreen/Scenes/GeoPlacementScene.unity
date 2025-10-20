@@ -1646,6 +1646,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1070883114}
   - component: {fileID: 1070883115}
+  - component: {fileID: 1070883116}
+  - component: {fileID: 1070883117}
   m_Layer: 0
   m_Name: GeoBuilding
   m_TagString: Untagged
@@ -1688,6 +1690,68 @@ MonoBehaviour:
   cubeHeightMeters: 5
   cubeMaterial: {fileID: 2100000, guid: 117b875761173479c81e54a847f2cc4d, type: 2}
   instanceMaterial: 1
+  useBuildingGeometry: 0
+  buildingCoordinatesLv95: '2739913.487,1251050.088 2739913.773,1251050.294 2739914.064,1251050.493
+    2739914.359,1251050.685 2739914.595,1251050.835 2739914.833,1251050.981 2739915.073,1251051.123
+    2739915.354,1251051.282 2739915.638,1251051.437 2739915.924,1251051.586 2739916.251,1251051.749
+    2739916.581,1251051.905 2739916.915,1251052.054 2739917.332,1251052.229 2739917.752,1251052.394
+    2739918.177,1251052.549 2739918.484,1251052.652 2739918.792,1251052.75 2739919.102,1251052.843
+    2739919.509,1251052.956 2739919.92,1251053.06 2739920.332,1251053.153 2739920.604,1251053.209
+    2739920.878,1251053.261 2739921.152,1251053.309 2739921.456,1251053.357 2739921.761,1251053.4
+    2739922.067,1251053.438 2739921.274,1251053.362 2739920.479,1251053.313 2739919.683,1251053.291
+    2739919.241,1251053.29 2739918.798,1251053.298 2739918.356,1251053.313 2739917.447,1251053.352
+    2739917.071,1251053.357 2739916.696,1251053.338 2739916.323,1251053.295 2739915.953,1251053.229
+    2739915.588,1251053.141 2739915.229,1251053.029 2739914.878,1251052.896 2739914.536,1251052.741
+    2739914.205,1251052.564 2739913.885,1251052.367 2739913.578,1251052.151 2739913.285,1251051.916
+    2739913.007,1251051.663 2739912.746,1251051.393 2739912.502,1251051.107 2739912.277,1251050.806
+    2739912.071,1251050.493 2739911.885,1251050.166 2739911.719,1251049.829 2739911.358,1251049.046
+    2739910.961,1251048.281 2739910.528,1251047.536 2739910.06,1251046.812 2739910.12,1251046.886
+    2739910.18,1251046.96 2739910.241,1251047.034 2739910.281,1251047.082 2739910.321,1251047.13
+    2739910.361,1251047.177 2739910.526,1251047.369 2739910.694,1251047.559 2739910.864,1251047.747
+    2739911.079,1251047.978 2739911.3,1251048.205 2739911.524,1251048.427 2739911.802,1251048.692
+    2739912.085,1251048.952 2739912.374,1251049.206 2739912.737,1251049.51 2739913.108,1251049.804
+    2739913.487,1251050.088 '
+  buildingName: Manual
+  clearExistingFactoryBuildings: 0
+  buildingFactory: {fileID: 1070883117}
+--- !u!114 &1070883116
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1070883112}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64a37cdd920f8ff4590d1579cfd917e3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  serviceEndpoint: https://www.geoportal.ch/services/wfs
+  typeNames: geoportal:a111_avdm01_amtlverm_fla
+  maxFeatureCount: 1000000
+  boundingBoxSizeMeters: 300
+  useDebugCoordinates: 1
+  debugLv95Coordinates: {x: 2739783, y: 1250944}
+  locationDesiredAccuracyMeters: 5
+  locationUpdateDistanceMeters: 0.5
+  locationServiceTimeoutSeconds: 15
+--- !u!114 &1070883117
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1070883112}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34604ca4738ca764cbb226cf3338d2b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  defaultAltitudeMeters: 0
+  buildingHeightMeters: 12
+  buildingMaterial: {fileID: 2100000, guid: 117b875761173479c81e54a847f2cc4d, type: 2}
+  instanceMaterial: 1
+  uvScale: {x: 0.1, y: 0.1}
 --- !u!1 &1132784300
 GameObject:
   m_ObjectHideFlags: 0
@@ -1698,6 +1762,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1132784301}
   - component: {fileID: 1132784302}
+  - component: {fileID: 1132784303}
   m_Layer: 0
   m_Name: Meshing Occlusion
   m_TagString: Untagged
@@ -1739,6 +1804,23 @@ MonoBehaviour:
   m_TextureCoordinates: 0
   m_Colors: 0
   m_ConcurrentQueueSize: 4
+--- !u!114 &1132784303
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1132784300}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b15f82cc229284894964d2d30806969d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_HumanSegmentationStencilMode: 0
+  m_HumanSegmentationDepthMode: 0
+  m_EnvironmentDepthMode: 3
+  m_EnvironmentDepthTemporalSmoothing: 1
+  m_OcclusionPreferenceMode: 0
 --- !u!1 &1183773660
 GameObject:
   m_ObjectHideFlags: 0
@@ -2548,7 +2630,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1785046441}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b15f82cc229284894964d2d30806969d, type: 3}
   m_Name: 
