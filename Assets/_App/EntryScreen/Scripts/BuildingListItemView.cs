@@ -33,6 +33,16 @@ using UnityEngine.UI;
 
             // Placeholder thumbnail (leave empty if you like)
             if (thumbnail) thumbnail.texture = null;
+            ThumbnailService.Instance?.RequestThumbnail(_data, 250, tex => {
+                if (!this || _data != data || !thumbnail || !tex) return;
+
+                thumbnail.texture = tex;
+                thumbnail.color = Color.white;
+                thumbnail.SetNativeSize();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(
+                    thumbnail.transform as RectTransform); 
+
+            });
 
             // Wire buttons
             if (openMapsButton)
