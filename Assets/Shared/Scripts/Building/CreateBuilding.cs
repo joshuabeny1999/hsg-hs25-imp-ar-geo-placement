@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using UnityEngine;
 using Shared.Scripts.Geo;
 
@@ -24,7 +22,7 @@ namespace Shared.Scripts.Building
         public BuildingInstance CreateBuildingFromCoordinates(string coordinates, string name = "Manual",
             float? altitudeOverride = null, bool? clearExistingOverride = null)
         {
-            if (!TryParseLv95Loop(coordinates, out var points, out var areaSign))
+            if (!BuildingGeometryUtils.TryParseLv95Loop(coordinates, out var points, out var areaSign))
             {
                 Debug.LogWarning("[CreateBuilding] Failed to parse coordinate loop for manual building creation.");
                 return null;
@@ -40,7 +38,7 @@ namespace Shared.Scripts.Building
             if (feature.Points.Count < 3)
                 return null;
 
-            var (eastCentroid, northCentroid) = ComputeCentroid(feature.Points);
+            var (eastCentroid, northCentroid) = BuildingGeometryUtils.ComputeCentroid(feature.Points);
             ProjNetTransformCH.LV95ToWGS84(eastCentroid, northCentroid, out var lat, out var lon);
 
             var local2D = BuildLocalPolygon(feature.Points, eastCentroid, northCentroid);
@@ -88,7 +86,7 @@ namespace Shared.Scripts.Building
             return new BuildingInstance(buildingGo, lat, lon, altitudeMeters);
         }
 
-        private static List<Vector2> BuildLocalPolygon(IReadOnlyList<Lv95Point> points, double centroidEast,
+        private static List<Vector2> BuildLocalPolygon(IReadOnlyList<BuildingGeometryUtils.Lv95Point> points, double centroidEast,
             double centroidNorth)
         {
             var result = new List<Vector2>(points.Count);
@@ -324,114 +322,14 @@ namespace Shared.Scripts.Building
         }
 
         private static float Cross(Vector2 a, Vector2 b) => a.x * b.y - a.y * b.x;
-
-        private static (double East, double North) ComputeCentroid(IReadOnlyList<Lv95Point> polygon)
-        {
-            double area = 0d;
-            double cx = 0d;
-            double cy = 0d;
-
-            for (int i = 0; i < polygon.Count; i++)
-            {
-                var p0 = polygon[i];
-                var p1 = polygon[(i + 1) % polygon.Count];
-                double cross = p0.East * p1.North - p1.East * p0.North;
-                area += cross;
-                cx += (p0.East + p1.East) * cross;
-                cy += (p0.North + p1.North) * cross;
-            }
-
-            area *= 0.5d;
-            if (Math.Abs(area) < 1e-6)
-            {
-                double meanEast = polygon.Average(p => p.East);
-                double meanNorth = polygon.Average(p => p.North);
-                return (meanEast, meanNorth);
-            }
-
-            double factor = 1.0 / (6.0 * area);
-            return (cx * factor, cy * factor);
-        }
-
-        private static bool TryParseLv95Loop(string coordinates, out List<Lv95Point> points, out float areaSign)
-        {
-            points = new List<Lv95Point>();
-            areaSign = 0f;
-
-            if (string.IsNullOrWhiteSpace(coordinates))
-                return false;
-
-            var tokens = coordinates
-                .Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (var token in tokens)
-            {
-                var pair = token.Split(',');
-                if (pair.Length != 2)
-                    continue;
-
-                if (!double.TryParse(pair[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double east))
-                    continue;
-                if (!double.TryParse(pair[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double north))
-                    continue;
-
-                points.Add(new Lv95Point(east, north));
-            }
-
-            if (points.Count < 3)
-            {
-                points.Clear();
-                return false;
-            }
-
-            var first = points[0];
-            var last = points[^1];
-            if (Math.Abs(first.East - last.East) < 0.001 && Math.Abs(first.North - last.North) < 0.001)
-                points.RemoveAt(points.Count - 1);
-
-            if (points.Count < 3)
-            {
-                points.Clear();
-                return false;
-            }
-
-            areaSign = (float)ComputeSignedArea(points);
-
-            return true;
-        }
-
-        private readonly struct Lv95Point
-        {
-            public readonly double East;
-            public readonly double North;
-
-            public Lv95Point(double east, double north)
-            {
-                East = east;
-                North = north;
-            }
-        }
-
-        private static double ComputeSignedArea(IReadOnlyList<Lv95Point> polygon)
-        {
-            double area = 0d;
-            for (int i = 0; i < polygon.Count; i++)
-            {
-                var p0 = polygon[i];
-                var p1 = polygon[(i + 1) % polygon.Count];
-                area += p0.East * p1.North - p1.East * p0.North;
-            }
-
-            return area * 0.5d;
-        }
-
+        
         private readonly struct BuildingFeature
         {
             public readonly string Name;
-            public readonly List<Lv95Point> Points;
+            public readonly List<BuildingGeometryUtils.Lv95Point> Points;
             public readonly float PointsAreaSign;
 
-            public BuildingFeature(string name, List<Lv95Point> points, float areaSign)
+            public BuildingFeature(string name, List<BuildingGeometryUtils.Lv95Point> points, float areaSign)
             {
                 Name = name;
                 Points = points;

@@ -3,6 +3,7 @@ using TMPro;
 using System;
 using Niantic.Lightship.AR.WorldPositioning;
 using Shared.Scripts.Geo;
+using Shared.Scripts.App;
 
 /// <summary>
 /// Field HUD for geo placement debugging.
@@ -11,27 +12,26 @@ using Shared.Scripts.Geo;
 /// </summary>
 public class GeoDebugDisplay : MonoBehaviour
 {
-    [Header("References")]
-    [Tooltip("The GeoObjectSpawner to compare against")]
+    [Header("References")] [Tooltip("The GeoObjectSpawner to compare against")]
     public GeoObjectSpawner geoSpawner;
 
     [Tooltip("Optional: WPS helper/manager for status readout")]
-    public ARWorldPositioningObjectHelper wpsHelper;         // optional
-    public ARWorldPositioningManager wpsManager;             // optional
+    public ARWorldPositioningObjectHelper wpsHelper; // optional
 
-    [Header("UI")]
-    public bool showDebugDisplay = true;
+    public ARWorldPositioningManager wpsManager; // optional
+
+    [Header("UI")] public bool showDebugDisplay = true;
+
     [Tooltip("Update interval in seconds")]
     public float updateInterval = 0.5f;
 
-    [Header("Proximity Bands (m)")]
-    public float veryCloseM = 5f;
+    [Header("Proximity Bands (m)")] public float veryCloseM = 5f;
     public float nearM = 20f;
     public float visibleM = 100f;
 
-    [Header("Heading / Bearing")]
-    [Tooltip("Show device heading and bearing to target (needs compass)")]
+    [Header("Heading / Bearing")] [Tooltip("Show device heading and bearing to target (needs compass)")]
     public bool showHeading = true;
+
     [Tooltip("If within this angular error, show 'On target'")]
     public float onTargetDegrees = 8f;
 
@@ -49,10 +49,11 @@ public class GeoDebugDisplay : MonoBehaviour
         if (_text == null)
         {
             Debug.LogError("[GeoDebugDisplay] Add to a TMP Text object.");
-            enabled = false; return;
+            enabled = false;
+            return;
         }
 
-        if (!wpsHelper)  wpsHelper  = FindFirstObjectByType<ARWorldPositioningObjectHelper>();
+        if (!wpsHelper) wpsHelper = FindFirstObjectByType<ARWorldPositioningObjectHelper>();
         if (!wpsManager) wpsManager = FindFirstObjectByType<ARWorldPositioningManager>();
         if (!geoSpawner) geoSpawner = FindFirstObjectByType<GeoObjectSpawner>();
 
@@ -65,6 +66,7 @@ public class GeoDebugDisplay : MonoBehaviour
             Input.location.Start(1f, 0.5f);
             _gpsStarted = true;
         }
+
         if (showHeading) Input.compass.enabled = true;
 
         _text.text = "Starting GPS…";
@@ -89,42 +91,70 @@ public class GeoDebugDisplay : MonoBehaviour
         }
 
         var status = Input.location.status;
-        if (status == LocationServiceStatus.Initializing) { _text.text = "GPS: Initializing…"; return; }
-        if (status == LocationServiceStatus.Failed)        { _text.text = "GPS: FAILED"; return; }
-        if (status == LocationServiceStatus.Stopped)       { _text.text = "GPS: STOPPED"; return; }
+        if (status == LocationServiceStatus.Initializing)
+        {
+            _text.text = "GPS: Initializing…";
+            return;
+        }
+
+        if (status == LocationServiceStatus.Failed)
+        {
+            _text.text = "GPS: FAILED";
+            return;
+        }
+
+        if (status == LocationServiceStatus.Stopped)
+        {
+            _text.text = "GPS: STOPPED";
+            return;
+        }
 
         var loc = Input.location.lastData;
         double dLat = loc.latitude, dLon = loc.longitude;
         float dAlt = loc.altitude;
         float hAcc = loc.horizontalAccuracy;
 
-        string proximityInfo = "";
-        string bearingInfo   = "";
-        string wpsInfo       = WpsStatusLine();
+        string wpsInfo = WpsStatusLine();
 
-        double targetEast = geoSpawner.east;
-        double targetNorth = geoSpawner.north;
-        ProjNetTransformCH.LV95ToWGS84(targetEast, targetNorth, out var targetLat, out var targetLon);
+        // decide target: prefer selected building (passed from list scene), else fallback to geoSpawner
+        double targetLat = 0, targetLon = 0;
+        bool hasSelected = (SelectedTargetContext.Latitude != 0 || SelectedTargetContext.Longitude != 0)
+                           || !string.IsNullOrEmpty(SelectedTargetContext.Egid)
+                           || !string.IsNullOrEmpty(SelectedTargetContext.RawCoordinates);
 
-        // Distance & proximity color bands
-        float distanceM = float.NaN;
-        if (geoSpawner != null)
+        if (hasSelected)
         {
-            
+            targetLat = SelectedTargetContext.Latitude;
+            targetLon = SelectedTargetContext.Longitude;
+        }
+        else if (geoSpawner != null)
+        {
+            // fallback to spawner LV95
+            ProjNetTransformCH.LV95ToWGS84(geoSpawner.east, geoSpawner.north, out targetLat, out targetLon);
+        }
+
+// Distance & proximity color bands
+        float distanceM = float.NaN;
+        string proximityInfo = "";
+        if (targetLat != 0 || targetLon != 0)
+        {
             distanceM = HaversineMeters(dLat, dLon, targetLat, targetLon);
             proximityInfo = ProximityLine(distanceM);
         }
 
-        // Heading & bearing
-        if (showHeading && geoSpawner != null)
+// Heading & bearing (uses the resolved target)
+        string bearingInfo = "";
+        if (showHeading && (targetLat != 0 || targetLon != 0))
         {
             float deviceHeading = Input.compass.enabled ? Input.compass.trueHeading : float.NaN; // 0..360°
             float bearingToTarget = (float)BearingDegrees(dLat, dLon, targetLat, targetLon);
             float turn = ShortestSignedAngle(deviceHeading, bearingToTarget); // left(-)/right(+)
 
-            string arrow = Mathf.Abs(turn) <= onTargetDegrees ? "<color=purple>● On target</color>" :
-                           (turn > 0 ? $"→ turn <b>{Mathf.Abs(turn):F0}°</b> right" :
-                                       $"← turn <b>{Mathf.Abs(turn):F0}°</b> left");
+            string arrow = Mathf.Abs(turn) <= onTargetDegrees
+                ? "<color=purple>● On target</color>"
+                : (turn > 0
+                    ? $"→ turn <b>{Mathf.Abs(turn):F0}°</b> right"
+                    : $"← turn <b>{Mathf.Abs(turn):F0}°</b> left");
 
             bearingInfo =
                 $"\n<b>HEADING</b>\n" +
@@ -132,7 +162,7 @@ public class GeoDebugDisplay : MonoBehaviour
                 $"{arrow}";
         }
 
-        // Vertical difference vs. cube altitude (MSL)
+// Vertical difference vs. cube altitude (if you still want that line)
         string verticalInfo = "";
         if (geoSpawner != null)
         {
@@ -140,7 +170,10 @@ public class GeoDebugDisplay : MonoBehaviour
             verticalInfo = $"\n<b>VERTICAL Δ</b>  device–cube: {dz:+0.0;-0.0;0.0} m";
         }
 
-        // Build UI
+// selected building block (if any)
+        string selectedInfo = SelectedInfoBlock(hasSelected, targetLat, targetLon);
+
+// Build UI
         _text.text =
             $"<b>DEVICE GPS</b>\n" +
             $"Lat: {dLat:F8}\n" +
@@ -150,30 +183,49 @@ public class GeoDebugDisplay : MonoBehaviour
             proximityInfo +
             verticalInfo +
             (string.IsNullOrEmpty(bearingInfo) ? "" : "\n" + bearingInfo) +
-            (string.IsNullOrEmpty(wpsInfo)     ? "" : "\n\n" + wpsInfo) +
-            CubeInfoBlock();
+            (string.IsNullOrEmpty(wpsInfo) ? "" : "\n\n" + wpsInfo) +
+            selectedInfo;
     }
 
-    private string CubeInfoBlock()
+    private string SelectedInfoBlock(bool hasSelected, double targetLat, double targetLon)
     {
-        double targetEast = geoSpawner.east;
-        double targetNorth = geoSpawner.north;
-        ProjNetTransformCH.LV95ToWGS84(targetEast, targetNorth, out var targetLat, out var targetLon);
+        if (hasSelected)
+        {
+            // trim raw coordinates just so HUD stays readable
+            string raw = SelectedTargetContext.RawCoordinates;
+            if (!string.IsNullOrEmpty(raw) && raw.Length > 80) raw = raw.Substring(0, 80) + "…";
 
+            return
+                $"\n\n<b>SELECTED BUILDING</b>\n" +
+                $"EGID: {SelectedTargetContext.Egid}\n" +
+                $"Name: {SelectedTargetContext.Name}\n" +
+                $"Lat: {targetLat:F8}\n" +
+                $"Lon: {targetLon:F8}\n" +
+                $"Alt (API): {geoSpawner.AltitudeMeters:F2} m" +
+                (string.IsNullOrEmpty(raw) ? "" : $"Coords: {raw}");
+        }
+
+        // fallback: your original cube/target block from the spawner
         if (geoSpawner == null) return "";
+
+        double e = geoSpawner.east, n = geoSpawner.north;
+        ProjNetTransformCH.LV95ToWGS84(e, n, out var lat, out var lon);
+
         return
             $"\n\n<b>CUBE (Target)</b>\n" +
-            $"East: {targetEast:F8}\n" +
-            $"North: {targetNorth:F8}\n" +
-            $"Lat: {targetLat:F8}\n" +
-            $"Lon: {targetLon:F8}\n" +
+            $"East: {e:F8}\n" +
+            $"North: {n:F8}\n" +
+            $"Lat: {lat:F8}\n" +
+            $"Lon: {lon:F8}\n" +
             $"Alt (API): {geoSpawner.AltitudeMeters:F2} m";
     }
 
     private string WpsStatusLine()
     {
         if (wpsManager == null && wpsHelper == null) return "";
-        string mgr = (wpsManager != null) ? (wpsManager.IsAvailable ? "<color=purple>Available</color>" : "<color=orange>Not ready</color>") : "n/a";
+        string mgr = (wpsManager != null)
+            ? (wpsManager.IsAvailable ? "<color=purple>Available</color>" : "<color=orange>Not ready</color>")
+            : "n/a";
         // If the helper exposes an altitude mode or similar, you could append it here (kept generic for version safety).
         return $"<b>WPS</b>  Status: {mgr}";
     }
@@ -183,9 +235,9 @@ public class GeoDebugDisplay : MonoBehaviour
         if (float.IsNaN(d)) return "";
         string band =
             d < veryCloseM ? "<color=purple>★ VERY CLOSE ★</color>" :
-            d < nearM      ? "<color=green>Near</color>" :
-            d < visibleM   ? "<color=orange>Getting close…</color>" :
-                             "<color=red>Far</color>";
+            d < nearM ? "<color=green>Near</color>" :
+            d < visibleM ? "<color=orange>Getting close…</color>" :
+            "<color=red>Far</color>";
 
         return $"\n<b>Distance→Target</b>: {d:F1} m  {band}";
     }
@@ -203,12 +255,13 @@ public class GeoDebugDisplay : MonoBehaviour
         const double R = 6371000.0;
         double dLat = Deg2Rad(lat2 - lat1);
         double dLon = Deg2Rad(lon2 - lon1);
-        double a = Math.Sin(dLat/2)*Math.Sin(dLat/2) +
+        double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
                    Math.Cos(Deg2Rad(lat1)) * Math.Cos(Deg2Rad(lat2)) *
-                   Math.Sin(dLon/2)*Math.Sin(dLon/2);
+                   Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
         double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
         return (float)(R * c);
     }
+
     private static double Deg2Rad(double d) => d * Math.PI / 180.0;
 
     private void OnDestroy()
@@ -216,7 +269,7 @@ public class GeoDebugDisplay : MonoBehaviour
         if (_gpsStarted) Input.location.Stop();
         if (showHeading) Input.compass.enabled = false;
     }
-    
+
     /// <summary>
     /// Bearing from point A(lat1,lon1) to B(lat2,lon2) in degrees (0° = North, clockwise)
     /// </summary>
