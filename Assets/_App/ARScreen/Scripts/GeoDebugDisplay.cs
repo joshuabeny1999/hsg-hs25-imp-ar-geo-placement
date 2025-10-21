@@ -201,7 +201,7 @@ public class GeoDebugDisplay : MonoBehaviour
                 $"Name: {SelectedTargetContext.Name}\n" +
                 $"Lat: {targetLat:F8}\n" +
                 $"Lon: {targetLon:F8}\n" +
-                $"Alt (API): {geoSpawner.AltitudeMeters:F2} m" +
+                $"Alt (API): {geoSpawner.AltitudeMeters:F2} m\n" +
                 (string.IsNullOrEmpty(raw) ? "" : $"Coords: {raw}");
         }
 
