@@ -164,6 +164,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36d312637ba0be0468349169bdafe4b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  wfs: {fileID: 1111431500}
   positioningHelper: {fileID: 0}
   wpsManager: {fileID: 0}
   east: 2739782.97
@@ -251,8 +252,6 @@ MonoBehaviour:
   locationDesiredAccuracyMeters: 5
   locationUpdateDistanceMeters: 0.5
   locationServiceTimeoutSeconds: 20
-  createMeshForBuildings: 1
-  buildingspawner: {fileID: 1111431499}
 --- !u!4 &1111431504
 Transform:
   m_ObjectHideFlags: 0

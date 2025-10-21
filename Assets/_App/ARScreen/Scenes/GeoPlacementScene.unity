@@ -1682,15 +1682,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36d312637ba0be0468349169bdafe4b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  wfs: {fileID: 1070883116}
   positioningHelper: {fileID: 783262639}
   wpsManager: {fileID: 783262638}
   east: 2742967.37
   north: 1252781.79
+  createCube: 0
   cubeSize: 5
   cubeHeightMeters: 5
   cubeMaterial: {fileID: 2100000, guid: 117b875761173479c81e54a847f2cc4d, type: 2}
   instanceMaterial: 1
-  useBuildingGeometry: 0
+  useBuildingGeometryFromTextField: 0
   buildingCoordinatesLv95: '2739913.487,1251050.088 2739913.773,1251050.294 2739914.064,1251050.493
     2739914.359,1251050.685 2739914.595,1251050.835 2739914.833,1251050.981 2739915.073,1251051.123
     2739915.354,1251051.282 2739915.638,1251051.437 2739915.924,1251051.586 2739916.251,1251051.749
@@ -1714,6 +1716,7 @@ MonoBehaviour:
   buildingName: Manual
   clearExistingFactoryBuildings: 0
   buildingFactory: {fileID: 1070883117}
+  debugSpawnAtOrigin: 0
 --- !u!114 &1070883116
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1731,7 +1734,8 @@ MonoBehaviour:
   maxFeatureCount: 1000000
   boundingBoxSizeMeters: 300
   useDebugCoordinates: 1
-  debugLv95Coordinates: {x: 2739783, y: 1250944}
+  debugLv95CoordinatesNorth: 2743009.25
+  debugLv95CoordinatesEast: 1252728.125
   locationDesiredAccuracyMeters: 5
   locationUpdateDistanceMeters: 0.5
   locationServiceTimeoutSeconds: 15
@@ -1747,11 +1751,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34604ca4738ca764cbb226cf3338d2b2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  defaultAltitudeMeters: 0
-  buildingHeightMeters: 12
   buildingMaterial: {fileID: 2100000, guid: 117b875761173479c81e54a847f2cc4d, type: 2}
-  instanceMaterial: 1
-  uvScale: {x: 0.1, y: 0.1}
+  height: 1
 --- !u!1 &1132784300
 GameObject:
   m_ObjectHideFlags: 0

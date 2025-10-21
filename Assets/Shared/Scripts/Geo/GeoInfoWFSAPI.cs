@@ -7,7 +7,6 @@ using System.Text;
 using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
-using Shared.Scripts.Geo;
 
 namespace Shared.Scripts.Geo
 {
@@ -61,11 +60,7 @@ namespace Shared.Scripts.Geo
         [SerializeField] private float locationUpdateDistanceMeters = 0.5f;
         [SerializeField] private float locationServiceTimeoutSeconds = 20f;
 
-
-        [SerializeField] private bool createMeshForBuildings = false;
-
-        [SerializeField] private GeoObjectSpawner buildingspawner;
-
+        
         private const string StatusFilter = "projektiert";
         private const string SrsName = "urn:ogc:def:crs:EPSG::2056";
 
@@ -308,13 +303,6 @@ namespace Shared.Scripts.Geo
             foreach (var building in buildings)
             {
                 Debug.Log(building.ToString());
-                if (createMeshForBuildings)
-                {
-                    if (buildingspawner != null && !string.IsNullOrWhiteSpace(building.Coordinates))
-                    {
-                        buildingspawner.TrySpawnBuildingGeometry(building.Coordinates, building.Egid, out _, false);
-                    }
-                }
             }
         }
     }
