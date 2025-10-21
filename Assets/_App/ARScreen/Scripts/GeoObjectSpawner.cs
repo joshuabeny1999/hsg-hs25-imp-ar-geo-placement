@@ -2,6 +2,7 @@ using UnityEngine;
 using Niantic.Lightship.AR.WorldPositioning;
 using System.Collections;
 using Shared.Scripts.Geo; 
+using Shared.Scripts.Building;
 
 /// <summary>
 /// Simple spawner that places a cube at a specific GPS location
