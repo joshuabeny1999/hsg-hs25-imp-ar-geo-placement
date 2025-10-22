@@ -184,8 +184,8 @@ Im Code relevant (mehr Details):
   - Konvexitätstest per Kreuzprodukt. Ein kleiner Epsilon-Spielraum verhindert Fehleinstufungen bei nahezu kollinearen Punkten.
   - Punkt-im-Dreieck-Test stellt sicher, dass kein verfügbarer Punkt innerhalb des Kandidatendreiecks liegt (verhindert Überschneidungen).
 - `PointInTriangle`:
-  - Baryzentrische Prüfung; wenn der Nenner (Doppelfläche) zu klein ist, gilt das Dreieck als degeneriert.
-  - Nutzt Toleranzen (z. B. `1e-6`) gegen numerisches Rauschen.
+  - Nutzt Edge-Functions (Kreuzprodukt, „same side“-Test) ohne Division.
+  - Verwendet eine kleine Toleranz (epsilon), um numerisches Rauschen/degenerierte Fälle abzufangen.
 - Fallback `TriangleFan`:
   - Bildet Dreiecke `(0, i, i+1)` für `i = 1 .. n-2`.
   - Erwartet sinnvolle Eckpunktreihenfolge (idealerweise CCW (counter-clockwise)) für korrekte Winding/Normalen.
