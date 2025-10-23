@@ -1,7 +1,9 @@
 using UnityEngine;
 using Niantic.Lightship.AR.WorldPositioning;
 using System.Collections;
+using System.Collections.Generic;
 using Shared.Scripts.Geo; 
+using Shared.Scripts.Building;
 
 /// <summary>
 /// Simple spawner that places a cube at a specific GPS location
@@ -9,6 +11,9 @@ using Shared.Scripts.Geo;
 /// </summary>
 public class GeoObjectSpawner : MonoBehaviour
 {
+    [Header("GeoInfo API")]
+    [SerializeField] private GeoInfoWFSAPI wfs;   // Drag your GeoInfoWFSAPI here
+
     [Header("WPS Helper")]
     [SerializeField] private ARWorldPositioningObjectHelper positioningHelper;
     [SerializeField] private ARWorldPositioningManager wpsManager;
@@ -51,6 +56,8 @@ public class GeoObjectSpawner : MonoBehaviour
 
     private void Awake()
     {
+        if (wfs) wfs.ProjectedFeaturesFetched += OnFeaturesFetched;
+
         // Find or create WPS helper
         if (positioningHelper == null)
             positioningHelper = FindFirstObjectByType<ARWorldPositioningObjectHelper>();
@@ -239,6 +246,15 @@ public class GeoObjectSpawner : MonoBehaviour
 
         return cube;
     }
+
+    void OnFeaturesFetched(List<ProjectedBuilding> projectedBuildings)
+    {
+        foreach (var building in projectedBuildings)
+        { 
+            TrySpawnBuildingGeometry(building.Coordinates, building.Egid, out _, false);
+        }
+    }
+
 
     public bool TrySpawnBuildingGeometry(string coordinatesLv95, string name, out GameObject buildingGo, bool clearExisting = false)
     {
