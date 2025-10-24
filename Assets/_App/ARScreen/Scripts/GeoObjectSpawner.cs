@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Shared.Scripts.Geo; 
 using Shared.Scripts.Building;
+using Shared.Scripts.App;
 
 /// <summary>
 /// Simple spawner that places a cube at a specific GPS location
@@ -18,10 +19,6 @@ public class GeoObjectSpawner : MonoBehaviour
     [SerializeField] private ARWorldPositioningObjectHelper positioningHelper;
     [SerializeField] private ARWorldPositioningManager wpsManager;
 
-    [Header("LV95 Coordinates (EPSG:2056)")]
-    public double east = 2739782.97;
-    public double north = 1250944.04;
-
     [Header("Cube Settings")]
     [SerializeField] private bool createCube = false;
     [Tooltip("Size of the cube in meters (larger = more visible from distance)")]
@@ -35,20 +32,29 @@ public class GeoObjectSpawner : MonoBehaviour
     [Header("Building Geometry")]
     [Tooltip("If provided, CreateBuilding will be used instead of a primitive cube.")]
     [SerializeField] private bool useBuildingGeometryFromTextField = false;
+
+    //This needs to be filled in from the start, information provided by the scene before 
     [SerializeField, TextArea(4, 10)] private string buildingCoordinatesLv95;
     [SerializeField] private string buildingName = "Manual";
     [SerializeField, Tooltip("Clear existing factory-spawned buildings before creating a new one.")]
     private bool clearExistingFactoryBuildings = false;
     [SerializeField] private CreateBuilding buildingFactory;
-    
+
     [Header("Debug")]
     [SerializeField, Tooltip("Bypass AR world positioning and place spawned objects at the scene origin.")]
-    private bool debugSpawnAtOrigin = false;
+    private bool debugSpawnAtProvidedCoordinates = false;
+    public double east = 2739782.97;
+    public double north = 1250944.04;
+
 
 
     private GameObject _spawnedObject;
     private bool _spawnedIsBuilding;
     private double _altitudeMeters = 0.0;
+
+    private string _lastBuildingCoordinates;
+    private string _lastBuildingName;
+    private bool _lastClearExisting;
 
     // Public property to expose altitude for debug display
     public double AltitudeMeters => _altitudeMeters;
@@ -82,7 +88,7 @@ public class GeoObjectSpawner : MonoBehaviour
 
     private void Start()
     {
-        if (debugSpawnAtOrigin)
+        if (debugSpawnAtProvidedCoordinates)
         {
             Debug.Log("[GeoObjectSpawner] Debug spawn mode enabled; placing objects at world origin.");
             _altitudeMeters = 0.0;
@@ -99,7 +105,7 @@ public class GeoObjectSpawner : MonoBehaviour
     ///  </summary>
     private IEnumerator WaitForWpsThenFetchAltitude()
     {
-        if (debugSpawnAtOrigin)
+        if (debugSpawnAtProvidedCoordinates)
             yield break;
 
         // If the manager exists, wait until WPS reports it’s available (with a short timeout)
@@ -197,9 +203,13 @@ public class GeoObjectSpawner : MonoBehaviour
     {
         if (useBuildingGeometryFromTextField)
         {
-            TrySpawnBuildingGeometry(buildingCoordinatesLv95, buildingName, out var buildingGo, clearExistingFactoryBuildings);
-            _spawnedIsBuilding = true;
-            _spawnedObject = buildingGo;
+            TrySpawnBuildingGeometry(buildingCoordinatesLv95, buildingName, out _, clearExistingFactoryBuildings);
+            return;
+        }
+
+        if (!useBuildingGeometryFromTextField && !createCube)
+        {
+            TrySpawnBuildingGeometry(SelectedTargetContext.RawCoordinates, buildingName, out _, clearExistingFactoryBuildings);
             return;
         }
 
@@ -208,6 +218,9 @@ public class GeoObjectSpawner : MonoBehaviour
             var cube = SpawnCubeInternal();
             _spawnedObject = cube;
             _spawnedIsBuilding = false;
+            _lastBuildingCoordinates = null;
+            _lastBuildingName = null;
+            _lastClearExisting = false;
         }
     }
 
@@ -228,7 +241,7 @@ public class GeoObjectSpawner : MonoBehaviour
             : null;
         cube.GetComponent<Renderer>().material = mat;
 
-        if (debugSpawnAtOrigin)
+        if (debugSpawnAtProvidedCoordinates)
         {
             cube.transform.SetParent(transform, false);
             cube.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
@@ -276,51 +289,87 @@ public class GeoObjectSpawner : MonoBehaviour
         float altitude = (float)_altitudeMeters;
 
         var building = buildingFactory.CreateBuildingFromCoordinates(targetCoordinates, buildingNameToUse, altitude, clearExisting);
-        if (building == null)
+        if (building == null || building.GameObject == null)
         {
             return false;
         }
 
-        if (debugSpawnAtOrigin)
-        {
-            building.GameObject.transform.SetParent(transform, false);
-            building.GameObject.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-            buildingGo = building.GameObject;
-            Debug.Log($"[GeoObjectSpawner] Debug building spawned at world origin | Original GPS target: {building.Latitude}, {building.Longitude}");
-            return true;
-        }
+        buildingGo = building.GameObject;
 
-        if (positioningHelper != null)
+        if (debugSpawnAtProvidedCoordinates)
+        {
+            buildingGo.transform.SetParent(transform, false);
+            buildingGo.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            Debug.Log($"[GeoObjectSpawner] Debug building spawned at world origin | Original GPS target: {building.Latitude}, {building.Longitude}");
+        }
+        else if (positioningHelper != null)
         {
             positioningHelper.AddOrUpdateObject(
-                building.GameObject,
+                buildingGo,
                 building.Latitude,
                 building.Longitude,
                 building.AltitudeMeters,
                 Quaternion.identity);
-
-            buildingGo = building.GameObject;
-            return true;
+        }
+        else
+        {
+            buildingGo.transform.SetParent(transform, false);
+            buildingGo.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
         }
 
-        building.GameObject.transform.SetParent(transform, false);
-        building.GameObject.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-        buildingGo = building.GameObject;
+        _spawnedObject = buildingGo;
+        _spawnedIsBuilding = true;
+        _lastBuildingCoordinates = targetCoordinates;
+        _lastBuildingName = buildingNameToUse;
+        _lastClearExisting = clearExisting;
+
         return true;
     }
+
+    private void RespawnLastBuilding()
+    {
+        if (string.IsNullOrWhiteSpace(_lastBuildingCoordinates))
+            return;
+
+        if (!TrySpawnBuildingGeometry(_lastBuildingCoordinates, _lastBuildingName, out _, _lastClearExisting))
+        {
+            _spawnedObject = null;
+            _spawnedIsBuilding = false;
+        }
+    }
+
     public void SetCubeHeightMeters(float h)
     {
-        cubeHeightMeters = Mathf.Max(0.01f, h);
-        if (_spawnedObject != null && !_spawnedIsBuilding)
+        cubeHeightMeters = Mathf.Max(1f, h);
+        if (_spawnedObject == null)
+            return;
+
+        if (_spawnedIsBuilding)
         {
-            var s = _spawnedObject.transform.localScale;
-            s.y = cubeHeightMeters;
-            _spawnedObject.transform.localScale = s;
+            if (buildingFactory != null)
+            {
+                buildingFactory.SetExtrusionHeight(cubeHeightMeters);
+            }
 
-            Debug.Log("[GeoObjectSpawner] Cube height set to " + cubeHeightMeters + " meters.");
+            var toDestroy = _spawnedObject;
+            _spawnedObject = null;
+            if (toDestroy != null)
+            {
+                Destroy(toDestroy);
+            }
 
-            var bb = _spawnedObject.transform.Find("Billboard");
-            if (bb != null) bb.localPosition = new Vector3(0f, cubeHeightMeters + 0.5f, 0f);
+            RespawnLastBuilding();
+            Debug.Log("[GeoObjectSpawner] Building height set to " + cubeHeightMeters + " meters.");
+            return;
         }
+
+        var s = _spawnedObject.transform.localScale;
+        s.y = cubeHeightMeters;
+        _spawnedObject.transform.localScale = s;
+
+        Debug.Log("[GeoObjectSpawner] Cube height set to " + cubeHeightMeters + " meters.");
+
+        var bb = _spawnedObject.transform.Find("Billboard");
+        if (bb != null) bb.localPosition = new Vector3(0f, cubeHeightMeters + 0.5f, 0f);
     }
 }

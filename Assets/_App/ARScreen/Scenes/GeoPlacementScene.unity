@@ -136,7 +136,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &107412111
 RectTransform:
   m_ObjectHideFlags: 0
@@ -164,13 +164,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 107412110}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.3372549}
+  m_Color: {r: 1, g: 1, b: 1, a: 0.63529414}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -232,8 +232,8 @@ RectTransform:
   - {fileID: 107412111}
   m_Father: {fileID: 1886635568}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.012461059, y: 0.042476602}
-  m_AnchorMax: {x: 0.98753893, y: 0.94348454}
+  m_AnchorMin: {x: 0.011111111, y: 0.0054054055}
+  m_AnchorMax: {x: 0.98888886, y: 0.9945946}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -1045,7 +1045,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 455a075ed49574968a66b2349d71b1f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  homeSceneName: Home
 --- !u!114 &770087724
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1429,7 +1428,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78ce6edf133946148b8082e88f0a918b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  geoSpawner: {fileID: 1070883115}
   wpsHelper: {fileID: 783262639}
   wpsManager: {fileID: 783262638}
   showDebugDisplay: 1
@@ -1950,8 +1948,6 @@ MonoBehaviour:
   wfs: {fileID: 1070883116}
   positioningHelper: {fileID: 783262639}
   wpsManager: {fileID: 783262638}
-  east: 2742967.37
-  north: 1252781.79
   createCube: 0
   cubeSize: 5
   cubeHeightMeters: 5
@@ -1981,7 +1977,9 @@ MonoBehaviour:
   buildingName: Manual
   clearExistingFactoryBuildings: 0
   buildingFactory: {fileID: 1070883117}
-  debugSpawnAtOrigin: 0
+  debugSpawnAtProvidedCoordinates: 0
+  east: 2742967.37
+  north: 1252781.79
 --- !u!114 &1070883116
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2452,8 +2450,8 @@ MonoBehaviour:
   m_Padding:
     m_Left: 50
     m_Right: 50
-    m_Top: 20
-    m_Bottom: 20
+    m_Top: 0
+    m_Bottom: 0
   m_ChildAlignment: 0
   m_Spacing: 10
   m_ChildForceExpandWidth: 1

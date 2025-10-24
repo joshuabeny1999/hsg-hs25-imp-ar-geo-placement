@@ -2,20 +2,16 @@ using UnityEngine;
 using TMPro;
 using System;
 using Niantic.Lightship.AR.WorldPositioning;
-using Shared.Scripts.Geo;
 using Shared.Scripts.App;
 
 /// <summary>
 /// Field HUD for geo placement debugging.
-/// Shows: device GPS, distance, WPS status, heading & bearing to target, vertical delta.
+/// Shows: device GPS, distance, WPS status, heading & bearing to target.
 /// Attach to a TMP Text (TextMeshProUGUI) object.
 /// </summary>
 public class GeoDebugDisplay : MonoBehaviour
 {
-    [Header("References")] [Tooltip("The GeoObjectSpawner to compare against")]
-    public GeoObjectSpawner geoSpawner;
-
-    [Tooltip("Optional: WPS helper/manager for status readout")]
+    [Header("References")] [Tooltip("Optional: WPS helper/manager for status readout")]
     public ARWorldPositioningObjectHelper wpsHelper; // optional
 
     public ARWorldPositioningManager wpsManager; // optional
@@ -55,7 +51,6 @@ public class GeoDebugDisplay : MonoBehaviour
 
         if (!wpsHelper) wpsHelper = FindFirstObjectByType<ARWorldPositioningObjectHelper>();
         if (!wpsManager) wpsManager = FindFirstObjectByType<ARWorldPositioningManager>();
-        if (!geoSpawner) geoSpawner = FindFirstObjectByType<GeoObjectSpawner>();
 
         _text.gameObject.SetActive(showDebugDisplay);
         if (!showDebugDisplay) return;
@@ -116,7 +111,7 @@ public class GeoDebugDisplay : MonoBehaviour
 
         string wpsInfo = WpsStatusLine();
 
-        // decide target: prefer selected building (passed from list scene), else fallback to geoSpawner
+        // decide target: only use the selected context (no cube fallback)
         double targetLat = 0, targetLon = 0;
         bool hasSelected = (SelectedTargetContext.Latitude != 0 || SelectedTargetContext.Longitude != 0)
                            || !string.IsNullOrEmpty(SelectedTargetContext.Egid)
@@ -127,16 +122,11 @@ public class GeoDebugDisplay : MonoBehaviour
             targetLat = SelectedTargetContext.Latitude;
             targetLon = SelectedTargetContext.Longitude;
         }
-        else if (geoSpawner != null)
-        {
-            // fallback to spawner LV95
-            ProjNetTransformCH.LV95ToWGS84(geoSpawner.east, geoSpawner.north, out targetLat, out targetLon);
-        }
 
 // Distance & proximity color bands
         float distanceM = float.NaN;
         string proximityInfo = "";
-        if (targetLat != 0 || targetLon != 0)
+        if (hasSelected && (targetLat != 0 || targetLon != 0))
         {
             distanceM = HaversineMeters(dLat, dLon, targetLat, targetLon);
             proximityInfo = ProximityLine(distanceM);
@@ -144,7 +134,7 @@ public class GeoDebugDisplay : MonoBehaviour
 
 // Heading & bearing (uses the resolved target)
         string bearingInfo = "";
-        if (showHeading && (targetLat != 0 || targetLon != 0))
+        if (showHeading && hasSelected && (targetLat != 0 || targetLon != 0))
         {
             float deviceHeading = Input.compass.enabled ? Input.compass.trueHeading : float.NaN; // 0..360°
             float bearingToTarget = (float)BearingDegrees(dLat, dLon, targetLat, targetLon);
@@ -162,16 +152,9 @@ public class GeoDebugDisplay : MonoBehaviour
                 $"{arrow}";
         }
 
-// Vertical difference vs. cube altitude (if you still want that line)
-        string verticalInfo = "";
-        if (geoSpawner != null)
-        {
-            float dz = dAlt - (float)geoSpawner.AltitudeMeters;
-            verticalInfo = $"\n<b>VERTICAL Δ</b>  device–cube: {dz:+0.0;-0.0;0.0} m";
-        }
-
 // selected building block (if any)
-        string selectedInfo = SelectedInfoBlock(hasSelected, targetLat, targetLon);
+    string selectedInfo = SelectedInfoBlock(hasSelected, targetLat, targetLon);
+    string selectedContextInfo = SelectedContextRawBlock();
 
 // Build UI
         _text.text =
@@ -181,10 +164,10 @@ public class GeoDebugDisplay : MonoBehaviour
             $"Alt: {dAlt:F1} m\n" +
             $"Accuracy: ±{hAcc:F1} m\n" +
             proximityInfo +
-            verticalInfo +
             (string.IsNullOrEmpty(bearingInfo) ? "" : "\n" + bearingInfo) +
             (string.IsNullOrEmpty(wpsInfo) ? "" : "\n\n" + wpsInfo) +
-            selectedInfo;
+            selectedInfo +
+            selectedContextInfo;
     }
 
     private string SelectedInfoBlock(bool hasSelected, double targetLat, double targetLon)
@@ -201,23 +184,10 @@ public class GeoDebugDisplay : MonoBehaviour
                 $"Name: {SelectedTargetContext.Name}\n" +
                 $"Lat: {targetLat:F8}\n" +
                 $"Lon: {targetLon:F8}\n" +
-                $"Alt (API): {geoSpawner.AltitudeMeters:F2} m\n" +
                 (string.IsNullOrEmpty(raw) ? "" : $"Coords: {raw}");
         }
 
-        // fallback: your original cube/target block from the spawner
-        if (geoSpawner == null) return "";
-
-        double e = geoSpawner.east, n = geoSpawner.north;
-        ProjNetTransformCH.LV95ToWGS84(e, n, out var lat, out var lon);
-
-        return
-            $"\n\n<b>CUBE (Target)</b>\n" +
-            $"East: {e:F8}\n" +
-            $"North: {n:F8}\n" +
-            $"Lat: {lat:F8}\n" +
-            $"Lon: {lon:F8}\n" +
-            $"Alt (API): {geoSpawner.AltitudeMeters:F2} m";
+        return "";
     }
 
     private string WpsStatusLine()
@@ -228,6 +198,30 @@ public class GeoDebugDisplay : MonoBehaviour
             : "n/a";
         // If the helper exposes an altitude mode or similar, you could append it here (kept generic for version safety).
         return $"<b>WPS</b>  Status: {mgr}";
+    }
+
+    // Always reflect exactly what's inside SelectedTargetContext (no parsing, no trimming)
+    private string SelectedContextRawBlock()
+    {
+        string egid = SelectedTargetContext.Egid;
+        string name = SelectedTargetContext.Name;
+        string raw = SelectedTargetContext.RawCoordinates;
+        double latRaw = SelectedTargetContext.Latitude;
+        double lonRaw = SelectedTargetContext.Longitude;
+
+        bool any = !string.IsNullOrEmpty(egid)
+                   || !string.IsNullOrEmpty(name)
+                   || !string.IsNullOrEmpty(raw)
+                   || latRaw != 0 || lonRaw != 0;
+        if (!any) return "";
+
+        return
+            $"\n\n<b>SELECTED CONTEXT (raw)</b>\n" +
+            $"EGID: {egid}\n" +
+            $"Name: {name}\n" +
+            $"Lat (raw): {latRaw:F8}\n" +
+            $"Lon (raw): {lonRaw:F8}\n" +
+            (string.IsNullOrEmpty(raw) ? "" : $"Coords (raw): {raw}");
     }
 
     private string ProximityLine(float d)
@@ -269,6 +263,8 @@ public class GeoDebugDisplay : MonoBehaviour
         if (_gpsStarted) Input.location.Stop();
         if (showHeading) Input.compass.enabled = false;
     }
+
+    
 
     /// <summary>
     /// Bearing from point A(lat1,lon1) to B(lat2,lon2) in degrees (0° = North, clockwise)

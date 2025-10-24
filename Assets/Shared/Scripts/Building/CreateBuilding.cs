@@ -18,6 +18,10 @@ namespace Shared.Scripts.Building
         [SerializeField, Tooltip("Extruded thickness applied to spawned buildings (meters).")]
         private float height = 1f;
 
+        public void SetExtrusionHeight(float meters)
+        {
+            height = Mathf.Max(1f, meters);
+        }
 
         public BuildingInstance CreateBuildingFromCoordinates(string coordinates, string name = "Manual",
             float? altitudeOverride = null, bool? clearExistingOverride = null)
