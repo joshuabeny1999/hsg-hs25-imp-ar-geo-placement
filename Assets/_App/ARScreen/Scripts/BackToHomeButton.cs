@@ -3,10 +3,15 @@ using UnityEngine.SceneManagement;
 
 public class BackToHomeButton : MonoBehaviour
 {
-    [SerializeField] private string homeSceneName = "Home"; // set your list scene name
-
-    public void GoBack()
+        public void GoBack()
     {
-        SceneManager.LoadScene(homeSceneName);
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("BackToHomeButton.GoBack ignored in edit mode. Enter Play Mode to navigate.");
+            return;
+        }
+#endif
+        SceneManager.LoadScene("Home");
     }
 }
