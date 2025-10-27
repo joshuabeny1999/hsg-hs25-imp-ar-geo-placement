@@ -870,7 +870,7 @@ MonoBehaviour:
   typeNames: geoportal:a111_avdm01_amtlverm_fla
   maxFeatureCount: 1000000
   boundingBoxSizeMeters: 300
-  useDebugCoordinates: 1
+  useDebugCoordinates: 0
   debugLv95CoordinatesNorth: 2743009.25
   debugLv95CoordinatesEast: 1252728.125
   locationDesiredAccuracyMeters: 5
