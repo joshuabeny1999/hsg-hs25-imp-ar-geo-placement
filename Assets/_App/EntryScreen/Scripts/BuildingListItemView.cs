@@ -8,12 +8,13 @@ using UnityEngine.UI;
         [SerializeField] private RawImage thumbnail;
         [SerializeField] private TextMeshProUGUI title;
         [SerializeField] private TextMeshProUGUI subtitle;
+        [SerializeField] private Button openGeoPortalButton;
         [SerializeField] private Button openMapsButton;
         [SerializeField] private Button openARButton;
 
         private ProjectedBuilding _data;
 
-        public void Bind(ProjectedBuilding data, int index, System.Action<ProjectedBuilding> onOpenMaps, System.Action<ProjectedBuilding> onOpenAR)
+        public void Bind(ProjectedBuilding data, int index, System.Action<ProjectedBuilding> onOpenGeoPortal, System.Action<ProjectedBuilding> onOpenMaps, System.Action<ProjectedBuilding> onOpenAR)
         {
             Debug.Log("Called with data: " + (data != null ? data.Egid : "null" ) + ", index: " + index);
             _data = data;
@@ -54,6 +55,11 @@ using UnityEngine.UI;
             });
 
             // Wire buttons
+            if (openGeoPortalButton)
+            {
+                openGeoPortalButton.onClick.RemoveAllListeners();
+                openGeoPortalButton.onClick.AddListener(() => onOpenGeoPortal?.Invoke(_data));
+            }
             if (openMapsButton)
             {
                 openMapsButton.onClick.RemoveAllListeners();

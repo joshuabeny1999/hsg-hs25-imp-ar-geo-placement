@@ -86,7 +86,7 @@ public class NearbyProjectsListController : MonoBehaviour
                 _pool.Add(view);
             }
 
-            view.Bind(_current[i], i + 1, OnOpenMaps, OnOpenAR);
+            view.Bind(_current[i], i + 1, OnOpenGeoPortal, OnOpenMaps, OnOpenAR);
         }
 
         for (; i < _pool.Count; i++)
@@ -125,6 +125,17 @@ public class NearbyProjectsListController : MonoBehaviour
         var url = $"https://www.google.com/maps?q={lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{lon.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
 #endif
         Debug.Log("Opening URL: " + url);
+        Application.OpenURL(url);
+    }
+
+    private void OnOpenGeoPortal(ProjectedBuilding b)
+    {
+        double y, x;
+        var gotCentroid = BuildingGeometryUtils.TryCentroidLV95(b.Coordinates, out y, out x);
+
+        var url = "https://www.geoportal.ch/iggis/map/40";
+        if (gotCentroid)  url = $"https://www.geoportal.ch/iggis/map/40?y={y}&x={x}&scale=500&rotation=0";
+        Debug.Log("Opening GeoPortal URL: " + url);
         Application.OpenURL(url);
     }
 
