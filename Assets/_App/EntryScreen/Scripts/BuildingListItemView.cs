@@ -23,9 +23,18 @@ using UnityEngine.UI;
             Debug.Log("Subtitle component is " + (subtitle ? "set" : "null"));
 
             // Simple title/subtitle for now
-            if (title) title.SetText(string.IsNullOrWhiteSpace(_data.GebHauptNutzung)
-                ? $"Building {index:00}"
-                : _data.GebHauptNutzung);
+            if (title)
+            {
+                if (string.IsNullOrWhiteSpace(_data.GebHauptNutzung))
+                {
+                    title.SetText($"Building {index:00}");
+                    _data.GebHauptNutzung = title.text; // Set the GebHauptNutzung to Building XX 
+                }
+                else
+                {
+                    title.SetText(_data.GebHauptNutzung);
+                }
+            }
 
             if (subtitle) subtitle.SetText(string.IsNullOrWhiteSpace(_data.Egid)
                 ? (_data.Nbident ?? "")

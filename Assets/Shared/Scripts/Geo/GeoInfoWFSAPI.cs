@@ -14,7 +14,7 @@ namespace Shared.Scripts.Geo
     public class ProjectedBuilding
     {
         public string Egid { get; }
-        public string GebHauptNutzung { get; }
+        public string GebHauptNutzung { get; set; }
         public string Coordinates { get; }
 
         public string Nbident { get; }

@@ -134,7 +134,7 @@ public class NearbyProjectsListController : MonoBehaviour
         var gotCentroid = BuildingGeometryUtils.TryCentroidWGS84(b.Coordinates, out lat, out lon);
 
         SelectedTargetContext.Egid = b.Egid;
-        SelectedTargetContext.Name = string.IsNullOrWhiteSpace(b.GebHauptNutzung) ? "Building" : b.GebHauptNutzung;
+        SelectedTargetContext.Name = b.GebHauptNutzung;
         SelectedTargetContext.RawCoordinates = b.Coordinates;
         if (gotCentroid) { SelectedTargetContext.Latitude = lat; SelectedTargetContext.Longitude = lon; }
 

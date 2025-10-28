@@ -109,7 +109,6 @@ namespace Shared.Scripts.Building
         {
             int count = polygon.Count;
             float clampedThickness = Mathf.Abs(thickness);
-            float halfThickness = clampedThickness * 0.5f;
             bool includeSides = clampedThickness > 0.0001f;
             float polygonArea = SignedArea(polygon);
 
@@ -118,11 +117,11 @@ namespace Shared.Scripts.Building
             var uvs = new List<Vector2>(vertices.Capacity);
             var meshTriangles = new List<int>(triangles.Count + (includeSides ? count * 6 : 0));
 
-            // Top surface (facing up)
+            // Top surface (facing up) - pivot at ground level, so top is at +thickness
             for (int i = 0; i < count; i++)
             {
                 Vector2 p = polygon[i];
-                vertices.Add(new Vector3(p.x, halfThickness, p.y));
+                vertices.Add(new Vector3(p.x, clampedThickness, p.y));
                 normals.Add(Vector3.up);
                 // Think of changing possible to uvs.Add(new Vector2(p.x * uvScale.x, p.y * uvScale.y)); 
                 // To map texture properly on larger buildings
@@ -169,10 +168,10 @@ namespace Shared.Scripts.Building
                         normal = -normal;
                     normal.Normalize();
 
-                    Vector3 v0Top = new Vector3(p0.x, halfThickness, p0.y);
-                    Vector3 v0Bottom = new Vector3(p0.x, -halfThickness, p0.y);
-                    Vector3 v1Top = new Vector3(p1.x, halfThickness, p1.y);
-                    Vector3 v1Bottom = new Vector3(p1.x, -halfThickness, p1.y);
+                    Vector3 v0Top = new Vector3(p0.x, clampedThickness, p0.y);
+                    Vector3 v0Bottom = new Vector3(p0.x, 0f, p0.y);
+                    Vector3 v1Top = new Vector3(p1.x, clampedThickness, p1.y);
+                    Vector3 v1Bottom = new Vector3(p1.x, 0f, p1.y);
 
                     int baseIndex = vertices.Count;
 
