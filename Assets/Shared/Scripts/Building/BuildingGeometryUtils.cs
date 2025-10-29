@@ -162,7 +162,6 @@ namespace Shared.Scripts.Building
             return area * 0.5d;
         }
 
-        // ---- Types you’ll move from CreateBuilding ----
         public readonly struct Lv95Point
         {
             public readonly double East;
@@ -174,5 +173,39 @@ namespace Shared.Scripts.Building
                 North = north;
             }
         }
+
+        /// <summary>
+        /// Haversine distance between two WGS84 points in meters.
+        /// </summary>
+        public static float HaversineMeters(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double R = 6371000.0;
+            double dLat = Deg2Rad(lat2 - lat1);
+            double dLon = Deg2Rad(lon2 - lon1);
+            double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                       Math.Cos(Deg2Rad(lat1)) * Math.Cos(Deg2Rad(lat2)) *
+                       Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return (float)(R * c);
+        }
+
+        private static double Deg2Rad(double d) => d * Math.PI / 180.0;
+
+        /// <summary>
+        /// Bearing from point A(lat1,lon1) to B(lat2,lon2) in degrees (0° = North, clockwise)
+        /// </summary>
+        public static double BearingDegrees(double lat1, double lon1, double lat2, double lon2)
+        {
+            double lat1Rad = Deg2Rad(lat1);
+            double lat2Rad = Deg2Rad(lat2);
+            double dLon = Deg2Rad(lon2 - lon1);
+
+            double y = Math.Sin(dLon) * Math.Cos(lat2Rad);
+            double x = Math.Cos(lat1Rad) * Math.Sin(lat2Rad) -
+                       Math.Sin(lat1Rad) * Math.Cos(lat2Rad) * Math.Cos(dLon);
+            double brng = Math.Atan2(y, x);
+            return (brng * 180.0 / Math.PI + 360.0) % 360.0; // normalize to 0–360°
+        }
+
     }
 }

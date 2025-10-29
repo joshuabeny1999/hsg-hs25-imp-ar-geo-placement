@@ -3,6 +3,7 @@ using TMPro;
 using System;
 using Niantic.Lightship.AR.WorldPositioning;
 using Shared.Scripts.App;
+using Shared.Scripts.Building;
 
 /// <summary>
 /// Field HUD for geo placement debugging.
@@ -128,7 +129,7 @@ public class GeoDebugDisplay : MonoBehaviour
         string proximityInfo = "";
         if (hasSelected && (targetLat != 0 || targetLon != 0))
         {
-            distanceM = HaversineMeters(dLat, dLon, targetLat, targetLon);
+            distanceM = BuildingGeometryUtils.HaversineMeters(dLat, dLon, targetLat, targetLon);
             proximityInfo = ProximityLine(distanceM);
         }
 
@@ -137,7 +138,7 @@ public class GeoDebugDisplay : MonoBehaviour
         if (showHeading && hasSelected && (targetLat != 0 || targetLon != 0))
         {
             float deviceHeading = Input.compass.enabled ? Input.compass.trueHeading : float.NaN; // 0..360°
-            float bearingToTarget = (float)BearingDegrees(dLat, dLon, targetLat, targetLon);
+            float bearingToTarget = (float)BuildingGeometryUtils.BearingDegrees(dLat, dLon, targetLat, targetLon);
             float turn = ShortestSignedAngle(deviceHeading, bearingToTarget); // left(-)/right(+)
 
             string arrow = Mathf.Abs(turn) <= onTargetDegrees
@@ -243,42 +244,9 @@ public class GeoDebugDisplay : MonoBehaviour
         return delta; // negative = turn left, positive = turn right
     }
 
-    /// Haversine (meters)
-    private static float HaversineMeters(double lat1, double lon1, double lat2, double lon2)
-    {
-        const double R = 6371000.0;
-        double dLat = Deg2Rad(lat2 - lat1);
-        double dLon = Deg2Rad(lon2 - lon1);
-        double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                   Math.Cos(Deg2Rad(lat1)) * Math.Cos(Deg2Rad(lat2)) *
-                   Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-        double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-        return (float)(R * c);
-    }
-
-    private static double Deg2Rad(double d) => d * Math.PI / 180.0;
-
     private void OnDestroy()
     {
         if (_gpsStarted) Input.location.Stop();
         if (showHeading) Input.compass.enabled = false;
-    }
-
-    
-
-    /// <summary>
-    /// Bearing from point A(lat1,lon1) to B(lat2,lon2) in degrees (0° = North, clockwise)
-    /// </summary>
-    private static double BearingDegrees(double lat1, double lon1, double lat2, double lon2)
-    {
-        double lat1Rad = Deg2Rad(lat1);
-        double lat2Rad = Deg2Rad(lat2);
-        double dLon = Deg2Rad(lon2 - lon1);
-
-        double y = Math.Sin(dLon) * Math.Cos(lat2Rad);
-        double x = Math.Cos(lat1Rad) * Math.Sin(lat2Rad) -
-                   Math.Sin(lat1Rad) * Math.Cos(lat2Rad) * Math.Cos(dLon);
-        double brng = Math.Atan2(y, x);
-        return (brng * 180.0 / Math.PI + 360.0) % 360.0; // normalize to 0–360°
     }
 }

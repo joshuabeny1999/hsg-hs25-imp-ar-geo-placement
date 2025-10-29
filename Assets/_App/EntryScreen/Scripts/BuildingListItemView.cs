@@ -8,13 +8,20 @@ using UnityEngine.UI;
         [SerializeField] private RawImage thumbnail;
         [SerializeField] private TextMeshProUGUI title;
         [SerializeField] private TextMeshProUGUI subtitle;
+        [SerializeField] private TextMeshProUGUI distanceText;
         [SerializeField] private Button openGeoPortalButton;
         [SerializeField] private Button openMapsButton;
         [SerializeField] private Button openARButton;
 
         private ProjectedBuilding _data;
 
-        public void Bind(ProjectedBuilding data, int index, System.Action<ProjectedBuilding> onOpenGeoPortal, System.Action<ProjectedBuilding> onOpenMaps, System.Action<ProjectedBuilding> onOpenAR)
+        public void Bind(
+            ProjectedBuilding data,
+            int index,
+            double distanceMeters,
+            System.Action<ProjectedBuilding> onOpenGeoPortal,
+            System.Action<ProjectedBuilding> onOpenMaps,
+            System.Action<ProjectedBuilding> onOpenAR)
         {
             Debug.Log("Called with data: " + (data != null ? data.Egid : "null" ) + ", index: " + index);
             _data = data;
@@ -40,6 +47,8 @@ using UnityEngine.UI;
             if (subtitle) subtitle.SetText(string.IsNullOrWhiteSpace(_data.Egid)
                 ? (_data.Nbident ?? "")
                 : $"EGID: {_data.Egid}  •  {_data.Nbident}");
+
+            if (distanceText) distanceText.SetText(FormatDistance(distanceMeters));
 
             // Placeholder thumbnail (leave empty if you like)
             if (thumbnail) thumbnail.texture = null;
@@ -70,5 +79,12 @@ using UnityEngine.UI;
                 openARButton.onClick.RemoveAllListeners();
                 openARButton.onClick.AddListener(() => onOpenAR?.Invoke(_data));
             }
+        }
+
+        private static string FormatDistance(double meters)
+        {
+            if (meters >= 1000.0)
+                return (meters / 1000.0).ToString("0.0") + " km";
+            return System.Math.Round(meters).ToString("0") + " m";
         }
     }

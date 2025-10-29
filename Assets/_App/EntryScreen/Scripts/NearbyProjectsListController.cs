@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Collections;
+using System.Globalization;
 using Shared.Scripts.Building;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -29,6 +31,17 @@ public class NearbyProjectsListController : MonoBehaviour
     private List<ProjectedBuilding> _current = new();
     private bool _isLoading = false;
 
+    private bool _locationReady = false;
+    private double _userLat = double.NaN;
+    private double _userLon = double.NaN;
+
+    private struct BuildingWithDistance
+    {
+        public ProjectedBuilding B;
+        public double DistanceMeters;
+        public double Lat;
+        public double Lon;
+    }
 
     void Awake()
     {
@@ -39,6 +52,7 @@ public class NearbyProjectsListController : MonoBehaviour
 
     void Start()
     {
+        StartCoroutine(InitLocation());
         if (autoFetchOnStart) OnRefreshClicked();
     }
 
@@ -54,6 +68,18 @@ public class NearbyProjectsListController : MonoBehaviour
         _isLoading = true;
         
         if (refreshButton) refreshButton.interactable = false;
+
+        if (Input.location.status == LocationServiceStatus.Running)
+        {
+            var data = Input.location.lastData;
+            _userLat = data.latitude;
+            _userLon = data.longitude;
+            _locationReady = true;
+        }
+        else if (Input.location.isEnabledByUser && Input.location.status == LocationServiceStatus.Stopped)
+        {
+            Input.location.Start(1f, 1f);
+        }
 
         // Show "loading", hide "no projects"
         ShowState(loading:true, hasData:false);
@@ -71,8 +97,36 @@ public class NearbyProjectsListController : MonoBehaviour
 
         _current = list ?? new List<ProjectedBuilding>();
 
+        // Build list with lat/lon + distance
+        List<BuildingWithDistance> enriched = new();
+        for (int k = 0; k < _current.Count; k++)
+        {
+            var b = _current[k];
+
+            // centroid -> WGS84
+            double lat, lon;
+            ProjNetTransformCH.LV95ToWGS84(b.EastCentroid, b.NorthCentroid, out lat, out lon);
+
+            double dist = double.PositiveInfinity;
+            if (_locationReady && !double.IsNaN(_userLat) && !double.IsNaN(_userLon))
+            {
+                dist = BuildingGeometryUtils.HaversineMeters(_userLat, _userLon, lat, lon);
+            }
+
+            enriched.Add(new BuildingWithDistance
+            {
+                B = b,
+                DistanceMeters = dist,
+                Lat = lat,
+                Lon = lon
+            });
+        }
+
+        // Sort: nearest first; items with unknown distance go to bottom
+        enriched.Sort((a, b) => a.DistanceMeters.CompareTo(b.DistanceMeters));
+
         int i = 0;
-        for (; i < _current.Count; i++)
+        for (; i < enriched.Count; i++)
         {
             BuildingListItemView view;
             if (i < _pool.Count)
@@ -86,12 +140,12 @@ public class NearbyProjectsListController : MonoBehaviour
                 _pool.Add(view);
             }
 
-            view.Bind(_current[i], i + 1, OnOpenGeoPortal, OnOpenMaps, OnOpenAR);
+            view.Bind(enriched[i].B, i + 1, enriched[i].DistanceMeters, OnOpenGeoPortal, OnOpenMaps, OnOpenAR);
         }
 
         for (; i < _pool.Count; i++)
             _pool[i].gameObject.SetActive(false);
-        
+
         bool hasData = _current.Count > 0;
         ShowState(loading:false, hasData:hasData);
     }
@@ -103,6 +157,31 @@ public class NearbyProjectsListController : MonoBehaviour
 
         // If you want the ScrollView hidden when empty:
         if (listContent) listContent.transform.parent.gameObject.SetActive(hasData);
+    }
+
+    private IEnumerator InitLocation()
+    {
+        if (!Input.location.isEnabledByUser)
+            yield break;
+
+        Input.location.Start(1f, 1f); // desiredAccuracyInMeters, updateDistanceInMeters
+
+        // wait up to ~5s for service to initialize
+        const float timeout = 5f;
+        float t = 0f;
+        while (Input.location.status == LocationServiceStatus.Initializing && t < timeout)
+        {
+            t += Time.deltaTime;
+            yield return null;
+        }
+
+        if (Input.location.status == LocationServiceStatus.Running)
+        {
+            var data = Input.location.lastData;
+            _userLat = data.latitude;
+            _userLon = data.longitude;
+            _locationReady = true;
+        }
     }
 
     // --- Button actions ---
