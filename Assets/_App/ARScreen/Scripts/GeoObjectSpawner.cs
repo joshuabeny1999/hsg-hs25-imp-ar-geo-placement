@@ -65,8 +65,6 @@ public class GeoObjectSpawner : MonoBehaviour
 
     private void Awake()
     {
-        if (wfs) wfs.ProjectedFeaturesFetched += OnFeaturesFetched;
-
         // Find or create WPS helper
         if (positioningHelper == null)
             positioningHelper = FindFirstObjectByType<ARWorldPositioningObjectHelper>();
@@ -261,15 +259,6 @@ public class GeoObjectSpawner : MonoBehaviour
         AddBillboardLabel(cube.transform);
 
         return cube;
-    }
-
-    void OnFeaturesFetched(List<ProjectedBuilding> projectedBuildings)
-    {
-        foreach (var building in projectedBuildings)
-        {
-            var elevation = building.ElevationMeters ?? 0.0;
-            TrySpawnBuildingGeometry(building.Coordinates, building.Egid, elevation, out _, false);
-        }
     }
 
 
