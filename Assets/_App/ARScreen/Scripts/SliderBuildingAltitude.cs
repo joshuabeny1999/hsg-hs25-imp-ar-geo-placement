@@ -13,8 +13,7 @@ public class SliderBuildingAltitude : MonoBehaviour
         if (slider == null) slider = GetComponent<Slider>();
         if (spawner != null && slider != null)
         {
-            slider.onValueChanged.AddListener(OnHeightChanged);
-            UpdateLabel(slider.value);
+            slider.onValueChanged.AddListener(OnHeightChanged);            
         }
     }
 
@@ -22,11 +21,12 @@ public class SliderBuildingAltitude : MonoBehaviour
     {
         if (spawner != null)
         {
+            UpdateLabel(slider.value);
             spawner.SetBuildingAltitudeMeters(a);
         }
     }
-        void UpdateLabel(float h)
+    void UpdateLabel(float a)
     {
-        if (valueText != null) valueText.text = $"{h:0.0} m";
+        if (valueText != null) valueText.text = a.ToString() + " m"; 
     }
 }
