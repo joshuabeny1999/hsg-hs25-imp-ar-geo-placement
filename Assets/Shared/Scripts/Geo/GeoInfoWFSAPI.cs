@@ -7,6 +7,7 @@ using System.Text;
 using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
+using Shared.Scripts.Building;
 
 namespace Shared.Scripts.Geo
 {
@@ -17,24 +18,47 @@ namespace Shared.Scripts.Geo
         public string GebHauptNutzung { get; set; }
         public string Coordinates { get; }
 
+        // centroid in LV95
+        public double EastCentroid { get; }
+        public double NorthCentroid { get; }
+
+        public double? ElevationMeters { get; private set; }
+        public double? SurfaceMeters   { get; private set; }
+        public double? HeightRelative  => (SurfaceMeters.HasValue && ElevationMeters.HasValue)
+            ? SurfaceMeters.Value - ElevationMeters.Value
+            : (double?)null;
+
         public string Nbident { get; }
 
         public string GebVersNr { get; }
 
-        public ProjectedBuilding(string egid, string gebHauptNutzung, string coordinates, string nbident,
-            string gebVersNr)
+        public ProjectedBuilding(
+            string egid, string gebHauptNutzung, string coordinates, string nbident, string gebVersNr,
+            double eastCentroid, double northCentroid)
         {
             Egid = egid;
             GebHauptNutzung = gebHauptNutzung;
             Coordinates = coordinates;
             Nbident = nbident;
             GebVersNr = gebVersNr;
+
+            EastCentroid = eastCentroid;
+            NorthCentroid = northCentroid;
+        }
+
+        internal void SetElevation(double? elevation, double? surface)
+        {
+            ElevationMeters = elevation;
+            SurfaceMeters   = surface;
         }
 
         public override string ToString()
         {
             return
-                $"egid={Egid}; Haupnutzung={GebHauptNutzung}; Coordinates={Coordinates}; Nbident={Nbident}; GebVersNr={GebVersNr}";
+                $"egid={Egid}; Haupnutzung={GebHauptNutzung}; " +
+                $"Centroid E/N={EastCentroid:F2}/{NorthCentroid:F2}; " +
+                $"z={ElevationMeters?.ToString("F2") ?? "-"}; surface={SurfaceMeters?.ToString("F2") ?? "-"}; " +
+                $"Coordinates={Coordinates}; Nbident={Nbident}; GebVersNr={GebVersNr}";
         }
     }
 
@@ -59,6 +83,11 @@ namespace Shared.Scripts.Geo
         [SerializeField] private float locationDesiredAccuracyMeters = 5f;
         [SerializeField] private float locationUpdateDistanceMeters = 0.5f;
         [SerializeField] private float locationServiceTimeoutSeconds = 20f;
+
+        [Header("Elevation Enrichment")]
+        [SerializeField] private bool waitForElevation = true;
+        [SerializeField, Tooltip("Pause between elevation requests (seconds)")]
+        private float elevationRequestDelaySeconds = 0.03f;
 
         
         private const string StatusFilter = "projektiert";
@@ -141,6 +170,11 @@ namespace Shared.Scripts.Geo
                 }
 
                 var features = ParseProjectedFeatures(request.downloadHandler.text);
+                if (waitForElevation && features.Count > 0)
+                {
+                    yield return EnrichElevationBlocking(features);
+                }
+
                 HandleFetchResults(features);
                 onCompleted?.Invoke(features);
             }
@@ -278,7 +312,13 @@ namespace Shared.Scripts.Geo
                         continue;
                     }
 
-                    results.Add(new ProjectedBuilding(egid, gebHauptNutzung, coordinates, nbident, gebVersNr));
+                    if (!BuildingGeometryUtils.TryCentroidLV95(coordinates, out var eastC, out var northC))
+                        continue;
+
+
+                    results.Add(new ProjectedBuilding(
+                        egid, gebHauptNutzung, coordinates, nbident, gebVersNr, eastC, northC));
+
                 }
             }
             catch (Exception ex)
@@ -303,6 +343,24 @@ namespace Shared.Scripts.Geo
             foreach (var building in buildings)
             {
                 Debug.Log(building.ToString());
+            }
+        }
+
+        private IEnumerator EnrichElevationBlocking(List<ProjectedBuilding> buildings)
+        {
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                var b = buildings[i];
+                yield return GeoInfoAPI.FetchElevation(b.EastCentroid, b.NorthCentroid, resp =>
+                {
+                    if (resp != null)
+                        b.SetElevation(resp.elevation, resp.surface);
+                    else
+                        b.SetElevation(null, null);
+                });
+
+                if (elevationRequestDelaySeconds > 0f)
+                    yield return new WaitForSeconds(elevationRequestDelaySeconds);
             }
         }
     }

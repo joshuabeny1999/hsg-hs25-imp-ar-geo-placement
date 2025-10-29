@@ -130,11 +130,8 @@ public class NearbyProjectsListController : MonoBehaviour
 
     private void OnOpenGeoPortal(ProjectedBuilding b)
     {
-        double y, x;
-        var gotCentroid = BuildingGeometryUtils.TryCentroidLV95(b.Coordinates, out y, out x);
 
-        var url = "https://www.geoportal.ch/iggis/map/40";
-        if (gotCentroid)  url = $"https://www.geoportal.ch/iggis/map/40?y={y}&x={x}&scale=500&rotation=0";
+        var url = $"https://www.geoportal.ch/iggis/map/40?y={b.EastCentroid}&x={b.NorthCentroid}&scale=500&rotation=0";
         Debug.Log("Opening GeoPortal URL: " + url);
         Application.OpenURL(url);
     }
@@ -142,12 +139,12 @@ public class NearbyProjectsListController : MonoBehaviour
     private void OnOpenAR(ProjectedBuilding b)
     {
         double lat = 0, lon = 0;
-        var gotCentroid = BuildingGeometryUtils.TryCentroidWGS84(b.Coordinates, out lat, out lon);
+        ProjNetTransformCH.LV95ToWGS84(b.EastCentroid, b.NorthCentroid, out lat, out lon);
 
         SelectedTargetContext.Egid = b.Egid;
         SelectedTargetContext.Name = b.GebHauptNutzung;
         SelectedTargetContext.RawCoordinates = b.Coordinates;
-        if (gotCentroid) { SelectedTargetContext.Latitude = lat; SelectedTargetContext.Longitude = lon; }
+        SelectedTargetContext.Latitude = lat; SelectedTargetContext.Longitude = lon;
 
         Debug.Log("Opening AR scene for building EGID: " + b.Egid);
         SceneManager.LoadScene(arSceneName);
