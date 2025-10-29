@@ -52,6 +52,8 @@ public class GeoObjectSpawner : MonoBehaviour
     private bool _spawnedIsBuilding;
     private double _altitudeMeters = 0.0;
 
+    // (minimal) no persistent last-lat/lon stored — convert LV95->WGS84 on demand when needed
+
     private string _lastBuildingCoordinates;
     private double _lastBuildingElevation;
     private string _lastBuildingName;
@@ -281,7 +283,7 @@ public class GeoObjectSpawner : MonoBehaviour
             return false;
         }
 
-        var targetCoordinates = !string.IsNullOrWhiteSpace(coordinatesLv95) ? coordinatesLv95 : buildingCoordinatesLv95;
+        var targetCoordinates = coordinatesLv95;
         if (string.IsNullOrWhiteSpace(targetCoordinates))
         {
             return false;
@@ -297,6 +299,7 @@ public class GeoObjectSpawner : MonoBehaviour
         }
 
         buildingGo = building.GameObject;
+        Debug.Log($"[GeoObjectSpawner] Building '{buildingNameToUse}' spawned at coordinates: {targetCoordinates} | Altitude: {altitude}m");
 
         if (debugSpawnAtProvidedCoordinates)
         {
@@ -312,11 +315,6 @@ public class GeoObjectSpawner : MonoBehaviour
                 building.Longitude,
                 building.AltitudeMeters,
                 Quaternion.identity);
-        }
-        else
-        {
-            buildingGo.transform.SetParent(transform, false);
-            buildingGo.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
         }
 
         _spawnedObject = buildingGo;
@@ -374,5 +372,59 @@ public class GeoObjectSpawner : MonoBehaviour
 
         var bb = _spawnedObject.transform.Find("Billboard");
         if (bb != null) bb.localPosition = new Vector3(0f, cubeHeightMeters + 0.5f, 0f);
+    }
+
+    /// <summary>
+    /// Adjusts (adds/deducts) the altitude (meters) where the currently spawned object will be placed.
+    /// The parameter `a` is treated as a delta: positive to raise, negative to lower.
+    /// The resulting altitude is clamped to a minimum of 0 meters.
+    /// If a building is spawned, it will be destroyed and respawned at the new altitude.
+    /// If a cube is spawned, its AR position will be updated if possible (or moved locally in debug mode).
+    /// </summary>
+    public void SetBuildingAltitudeMeters(double a)
+    {
+    // apply as delta
+    _altitudeMeters += a;
+    // clamp to >= 0 meters
+    _altitudeMeters = System.Math.Max(0.0, _altitudeMeters);
+
+        if (_spawnedObject == null)
+            return;
+
+        if (_spawnedIsBuilding)
+        {
+            // Recreate the building using the new altitude
+            if (buildingFactory != null)
+            {
+                var toDestroy = _spawnedObject;
+                _spawnedObject = null;
+                if (toDestroy != null)
+                {
+                    Destroy(toDestroy);
+                }
+
+                RespawnLastBuilding();
+                Debug.Log("[GeoObjectSpawner] Building altitude set to " + _altitudeMeters + " meters.");
+            }
+
+            return;
+        }
+
+        // If we have a cube spawned, update its altitude.
+        if (debugSpawnAtProvidedCoordinates)
+        {
+            // In debug mode the cube is parented to this transform at Vector3.zero; move it locally along Y
+            _spawnedObject.transform.localPosition = new Vector3(0f, (float)_altitudeMeters, 0f);
+            Debug.Log($"[GeoObjectSpawner] Debug cube altitude set to {_altitudeMeters}m (local Y moved).");
+            return;
+        }
+
+        // Minimal approach: convert LV95->WGS84 on demand using the stored east/north and update via positioning helper
+        if (positioningHelper != null)
+        {
+            ProjNetTransformCH.LV95ToWGS84(east, north, out double lat, out double lon);
+            positioningHelper.AddOrUpdateObject(_spawnedObject, lat, lon, _altitudeMeters, Quaternion.identity);
+            Debug.Log("[GeoObjectSpawner] Cube altitude set to " + _altitudeMeters + " meters.");
+        }
     }
 }
