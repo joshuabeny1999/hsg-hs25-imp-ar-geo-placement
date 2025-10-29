@@ -53,6 +53,7 @@ public class GeoObjectSpawner : MonoBehaviour
     private double _altitudeMeters = 0.0;
 
     private string _lastBuildingCoordinates;
+    private double _lastBuildingElevation;
     private string _lastBuildingName;
     private bool _lastClearExisting;
 
@@ -203,13 +204,13 @@ public class GeoObjectSpawner : MonoBehaviour
     {
         if (useBuildingGeometryFromTextField)
         {
-            TrySpawnBuildingGeometry(buildingCoordinatesLv95, buildingName, out _, clearExistingFactoryBuildings);
+            TrySpawnBuildingGeometry(buildingCoordinatesLv95, buildingName, _altitudeMeters, out _, clearExistingFactoryBuildings);
             return;
         }
 
         if (!useBuildingGeometryFromTextField && !createCube)
         {
-            TrySpawnBuildingGeometry(SelectedTargetContext.RawCoordinates, buildingName, out _, clearExistingFactoryBuildings);
+            TrySpawnBuildingGeometry(SelectedTargetContext.RawCoordinates, buildingName, _altitudeMeters, out _, clearExistingFactoryBuildings);
             return;
         }
 
@@ -263,13 +264,14 @@ public class GeoObjectSpawner : MonoBehaviour
     void OnFeaturesFetched(List<ProjectedBuilding> projectedBuildings)
     {
         foreach (var building in projectedBuildings)
-        { 
-            TrySpawnBuildingGeometry(building.Coordinates, building.Egid, out _, false);
+        {
+            var elevation = building.ElevationMeters ?? 0.0;
+            TrySpawnBuildingGeometry(building.Coordinates, building.Egid, elevation, out _, false);
         }
     }
 
 
-    public bool TrySpawnBuildingGeometry(string coordinatesLv95, string name, out GameObject buildingGo, bool clearExisting = false)
+    public bool TrySpawnBuildingGeometry(string coordinatesLv95, string name, double elevation, out GameObject buildingGo, bool clearExisting = false)
     {
         buildingGo = null;
 
@@ -286,7 +288,7 @@ public class GeoObjectSpawner : MonoBehaviour
         }
 
         var buildingNameToUse = string.IsNullOrWhiteSpace(name) ? buildingName : name;
-        float altitude = (float)_altitudeMeters;
+        float altitude = (float)(elevation > 0.0 ? elevation : _altitudeMeters);
 
         var building = buildingFactory.CreateBuildingFromCoordinates(targetCoordinates, buildingNameToUse, altitude, clearExisting);
         if (building == null || building.GameObject == null)
@@ -300,7 +302,7 @@ public class GeoObjectSpawner : MonoBehaviour
         {
             buildingGo.transform.SetParent(transform, false);
             buildingGo.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-            Debug.Log($"[GeoObjectSpawner] Debug building spawned at world origin | Original GPS target: {building.Latitude}, {building.Longitude}");
+            Debug.Log($"[GeoObjectSpawner] Debug building spawned at provided coordinates | Original GPS target: {building.Latitude}, {building.Longitude}");
         }
         else if (positioningHelper != null)
         {
@@ -320,6 +322,7 @@ public class GeoObjectSpawner : MonoBehaviour
         _spawnedObject = buildingGo;
         _spawnedIsBuilding = true;
         _lastBuildingCoordinates = targetCoordinates;
+        _lastBuildingElevation = elevation;
         _lastBuildingName = buildingNameToUse;
         _lastClearExisting = clearExisting;
 
@@ -331,7 +334,7 @@ public class GeoObjectSpawner : MonoBehaviour
         if (string.IsNullOrWhiteSpace(_lastBuildingCoordinates))
             return;
 
-        if (!TrySpawnBuildingGeometry(_lastBuildingCoordinates, _lastBuildingName, out _, _lastClearExisting))
+        if (!TrySpawnBuildingGeometry(_lastBuildingCoordinates, _lastBuildingName, _lastBuildingElevation, out _, _lastClearExisting))
         {
             _spawnedObject = null;
             _spawnedIsBuilding = false;
