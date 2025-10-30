@@ -12,9 +12,6 @@ using Shared.Scripts.App;
 /// </summary>
 public class GeoObjectSpawner : MonoBehaviour
 {
-    [Header("GeoInfo API")]
-    [SerializeField] private GeoInfoWFSAPI wfs;   // Drag your GeoInfoWFSAPI here
-
     [Header("WPS Helper")]
     [SerializeField] private ARWorldPositioningObjectHelper positioningHelper;
     [SerializeField] private ARWorldPositioningManager wpsManager;
