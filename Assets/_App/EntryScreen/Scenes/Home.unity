@@ -1070,12 +1070,14 @@ MonoBehaviour:
   typeNames: geoportal:a111_avdm01_amtlverm_fla
   maxFeatureCount: 1000000
   boundingBoxSizeMeters: 300
-  useDebugCoordinates: 0
+  useDebugCoordinates: 1
   debugLv95CoordinatesNorth: 2743009.25
   debugLv95CoordinatesEast: 1252728.125
   locationDesiredAccuracyMeters: 5
   locationUpdateDistanceMeters: 0.5
   locationServiceTimeoutSeconds: 20
+  waitForElevation: 1
+  elevationRequestDelaySeconds: 0.03
 --- !u!4 &1235020389
 Transform:
   m_ObjectHideFlags: 0
