@@ -23,7 +23,6 @@ public class GeoObjectSpawner : MonoBehaviour
     [Tooltip("Cube height in meters (Y scale)")]
     public float cubeHeightMeters = 5f;
     [SerializeField] private Material cubeMaterial;
-    [SerializeField] private bool instanceMaterial = true;
 
 
     [Header("Building Geometry")]
@@ -234,9 +233,7 @@ public class GeoObjectSpawner : MonoBehaviour
         cube.transform.localScale = new Vector3(cubeSize, cubeHeightMeters, cubeSize);
 
         // Use linked material (with a safe instance)
-        Material mat = cubeMaterial != null
-            ? (instanceMaterial ? new Material(cubeMaterial) : cubeMaterial)
-            : null;
+        Material mat = cubeMaterial;
         cube.GetComponent<Renderer>().material = mat;
 
         if (debugSpawnAtProvidedCoordinates)
@@ -305,8 +302,9 @@ public class GeoObjectSpawner : MonoBehaviour
 
         _spawnedObject = buildingGo;
         _spawnedIsBuilding = true;
+        _altitudeMeters = altitude;
         _lastBuildingCoordinates = targetCoordinates;
-        _lastBuildingElevation = elevation;
+        _lastBuildingElevation = altitude;
         _lastBuildingName = buildingNameToUse;
         _lastClearExisting = clearExisting;
 
@@ -318,7 +316,7 @@ public class GeoObjectSpawner : MonoBehaviour
         if (string.IsNullOrWhiteSpace(_lastBuildingCoordinates))
             return;
 
-        if (!TrySpawnBuildingGeometry(_lastBuildingCoordinates, _lastBuildingName, _lastBuildingElevation, out _, _lastClearExisting))
+        if (!TrySpawnBuildingGeometry(_lastBuildingCoordinates, _lastBuildingName, _altitudeMeters, out _, _lastClearExisting))
         {
             _spawnedObject = null;
             _spawnedIsBuilding = false;
