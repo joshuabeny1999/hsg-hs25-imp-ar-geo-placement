@@ -1,6 +1,7 @@
 using System;
 using Shared.Scripts.App;
 using Shared.Scripts.Geo;
+using Shared.Scripts.Building;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,7 +14,7 @@ public class ArrowToTarget : MonoBehaviour
     public float hideWhenCloserThanMeters = 30f;
 
     private Image _arrowImage;
-    private float _bearingToTarget = 0f;
+    private double _bearingToTarget = 0f;
     private float _distanceM = Mathf.Infinity;
 
     void Start()
@@ -55,36 +56,14 @@ public class ArrowToTarget : MonoBehaviour
         }
 
         var coord = Input.location.lastData;
-        _bearingToTarget = GeoDebugHUD_BearingDeg(coord.latitude, coord.longitude, targetLat, targetLon);
-        _distanceM = GeoDebugHUD_HaversineMeters(coord.latitude, coord.longitude, targetLat, targetLon);
+        _bearingToTarget = BuildingGeometryUtils.BearingDegrees(coord.latitude, coord.longitude, targetLat, targetLon);
+        _distanceM = BuildingGeometryUtils.HaversineMeters(coord.latitude, coord.longitude, targetLat, targetLon);
 
         float heading = Input.compass.trueHeading;
-        float relative = _bearingToTarget - heading;
+        float relative = (float)_bearingToTarget - heading;
         if (relative < 0) relative += 360f;
 
         _arrowImage.rectTransform.rotation = Quaternion.Euler(0, 0, -relative);
         _arrowImage.enabled = _distanceM > hideWhenCloserThanMeters;
-    }
-
-    static float GeoDebugHUD_HaversineMeters(double lat1, double lon1, double lat2, double lon2)
-    {
-        const double R = 6371000.0;
-        double dLat = (lat2 - lat1) * Mathf.Deg2Rad;
-        double dLon = (lon2 - lon1) * Mathf.Deg2Rad;
-        lat1 *= Mathf.Deg2Rad; lat2 *= Mathf.Deg2Rad;
-        double a = Mathf.Sin((float)dLat/2)*Mathf.Sin((float)dLat/2) +
-                   Mathf.Cos((float)lat1)*Mathf.Cos((float)lat2) * Mathf.Sin((float)dLon/2)*Mathf.Sin((float)dLon/2);
-        double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1-a));
-        return (float)(R * c);
-    }
-    static float GeoDebugHUD_BearingDeg(double lat1, double lon1, double lat2, double lon2)
-    {
-        double φ1 = lat1 * Mathf.Deg2Rad, φ2 = lat2 * Mathf.Deg2Rad;
-        double Δλ = (lon2 - lon1) * Mathf.Deg2Rad;
-        double y = Math.Sin(Δλ) * Math.Cos(φ2);
-        double x = Math.Cos(φ1)*Math.Sin(φ2) - Math.Sin(φ1)*Math.Cos(φ2)*Math.Cos(Δλ);
-        double θ = Math.Atan2(y, x);
-        double brng = (θ * Mathf.Rad2Deg + 360.0) % 360.0;
-        return (float)brng;
     }
 }
