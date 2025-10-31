@@ -223,6 +223,7 @@ public class NearbyProjectsListController : MonoBehaviour
         SelectedTargetContext.Egid = b.Egid;
         SelectedTargetContext.Name = b.GebHauptNutzung;
         SelectedTargetContext.RawCoordinates = b.Coordinates;
+        SelectedTargetContext.ElevationMeters = b.ElevationMeters;
         SelectedTargetContext.Latitude = lat; SelectedTargetContext.Longitude = lon;
 
         Debug.Log("Opening AR scene for building EGID: " + b.Egid);

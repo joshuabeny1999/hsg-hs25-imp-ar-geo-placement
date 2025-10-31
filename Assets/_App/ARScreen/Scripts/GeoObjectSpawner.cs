@@ -117,9 +117,7 @@ public class GeoObjectSpawner : MonoBehaviour
             Debug.Log($"WPS available: {wpsManager.IsAvailable}");
         }
 
-        // Toggle altitude source by commenting/uncommenting the desired line below.
         yield return StartCoroutine(FetchAltitudeFromDevice());
-        // yield return StartCoroutine(FetchAltitudeFromApi());
 
         SpawnGeoObject();
     }
@@ -162,26 +160,6 @@ public class GeoObjectSpawner : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Fetches real-world altitude from Open-Elevation API
-    /// API: https://open-elevation.com/
-    /// </summary>
-    private IEnumerator FetchAltitudeFromApi()
-    {
-        yield return GeoInfoAPI.FetchElevation(east, north, resp =>
-        {
-            if (resp != null)
-            {
-                _altitudeMeters = resp.elevation;
-                Debug.Log($"[GeoObjectSpawner] Altitude received: {_altitudeMeters}m");
-            }
-            else
-            {
-                Debug.LogWarning("[GeoObjectSpawner] Failed to fetch altitude using default 0m");
-            }
-        });
-    }
-    
     private void AddBillboardLabel(Transform parent, string text = "↓ This is a Demo Cube ↓")
     {
         var go = new GameObject("Billboard");
@@ -206,6 +184,12 @@ public class GeoObjectSpawner : MonoBehaviour
 
         if (!useBuildingGeometryFromTextField && !createCube)
         {
+            double elevation = (SelectedTargetContext.ElevationMeters.HasValue && SelectedTargetContext.ElevationMeters.Value > 0.0)
+                ? SelectedTargetContext.ElevationMeters.Value
+                : _altitudeMeters;
+
+            _altitudeMeters = elevation;
+
             TrySpawnBuildingGeometry(SelectedTargetContext.RawCoordinates, buildingName, _altitudeMeters, out _, clearExistingFactoryBuildings);
             return;
         }
