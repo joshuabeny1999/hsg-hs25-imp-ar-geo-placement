@@ -188,8 +188,7 @@ public class NearbyProjectsListController : MonoBehaviour
 
     private void OnOpenGeoPortal(ProjectedBuilding b)
     {
-
-        var url = $"https://www.geoportal.ch/iggis/map/40?y={b.EastCentroid}&x={b.NorthCentroid}&scale=500&rotation=0";
+        var url = $"https://www.geoportal.ch/ch/map/40?topic=coord&y={b.EastCentroid}&x={b.NorthCentroid}&scale=500&rotation=0&popup=1";
         Debug.Log("Opening GeoPortal URL: " + url);
         Application.OpenURL(url);
     }
