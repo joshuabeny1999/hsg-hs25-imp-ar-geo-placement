@@ -140,7 +140,7 @@ public class NearbyProjectsListController : MonoBehaviour
                 _pool.Add(view);
             }
 
-            view.Bind(enriched[i].B, i + 1, enriched[i].DistanceMeters, OnOpenGeoPortal, OnOpenMaps, OnOpenAR);
+            view.Bind(enriched[i].B, i + 1, enriched[i].DistanceMeters, OnOpenGeoPortal, OnOpenAR);
         }
 
         for (; i < _pool.Count; i++)
@@ -186,31 +186,9 @@ public class NearbyProjectsListController : MonoBehaviour
 
     // --- Button actions ---
 
-    private void OnOpenMaps(ProjectedBuilding b)
-    {
-        Debug.Log("Opening Map link for building EGID: " + b.Egid);
-
-        double lat, lon;
-        if (!BuildingGeometryUtils.TryCentroidWGS84(b.Coordinates, out lat, out lon))
-        {
-            Debug.LogWarning("Could not parse coordinates for maps link.");
-            return;
-        }
-#if UNITY_IOS
-        var url = $"http://maps.apple.com/?ll={lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{lon.ToString(System.Globalization.CultureInfo.InvariantCulture)}&q=Building";
-#elif UNITY_ANDROID
-        var url = $"geo:{lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{lon.ToString(System.Globalization.CultureInfo.InvariantCulture)}?q={lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{lon.ToString(System.Globalization.CultureInfo.InvariantCulture)}(Building)";
-#else
-        var url = $"https://www.google.com/maps?q={lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{lon.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
-#endif
-        Debug.Log("Opening URL: " + url);
-        Application.OpenURL(url);
-    }
-
     private void OnOpenGeoPortal(ProjectedBuilding b)
     {
-
-        var url = $"https://www.geoportal.ch/iggis/map/40?y={b.EastCentroid}&x={b.NorthCentroid}&scale=500&rotation=0";
+        var url = $"https://www.geoportal.ch/ch/map/40?topic=coord&y={b.EastCentroid}&x={b.NorthCentroid}&scale=500&rotation=0&popup=1";
         Debug.Log("Opening GeoPortal URL: " + url);
         Application.OpenURL(url);
     }

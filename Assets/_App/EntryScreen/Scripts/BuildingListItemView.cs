@@ -10,7 +10,6 @@ using UnityEngine.UI;
         [SerializeField] private TextMeshProUGUI subtitle;
         [SerializeField] private TextMeshProUGUI distanceText;
         [SerializeField] private Button openGeoPortalButton;
-        [SerializeField] private Button openMapsButton;
         [SerializeField] private Button openARButton;
 
         private ProjectedBuilding _data;
@@ -20,7 +19,6 @@ using UnityEngine.UI;
             int index,
             double distanceMeters,
             System.Action<ProjectedBuilding> onOpenGeoPortal,
-            System.Action<ProjectedBuilding> onOpenMaps,
             System.Action<ProjectedBuilding> onOpenAR)
         {
             Debug.Log("Called with data: " + (data != null ? data.Egid : "null" ) + ", index: " + index);
@@ -68,11 +66,6 @@ using UnityEngine.UI;
             {
                 openGeoPortalButton.onClick.RemoveAllListeners();
                 openGeoPortalButton.onClick.AddListener(() => onOpenGeoPortal?.Invoke(_data));
-            }
-            if (openMapsButton)
-            {
-                openMapsButton.onClick.RemoveAllListeners();
-                openMapsButton.onClick.AddListener(() => onOpenMaps?.Invoke(_data));
             }
             if (openARButton)
             {
