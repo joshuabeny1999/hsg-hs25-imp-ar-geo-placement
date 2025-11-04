@@ -16,6 +16,8 @@ public class NearbyProjectsListController : MonoBehaviour
 
     [Header("UI")]
     [SerializeField] private Button refreshButton;
+
+    [SerializeField] private TMP_Dropdown distanceDropdown;
     [SerializeField] private Transform listContent;             // ScrollView/Viewport/Content
     [SerializeField] private BuildingListItemView itemPrefab;   // Your row prefab
 
@@ -46,6 +48,7 @@ public class NearbyProjectsListController : MonoBehaviour
     void Awake()
     {
         if (refreshButton) refreshButton.onClick.AddListener(OnRefreshClicked);
+        if (distanceDropdown) distanceDropdown.onValueChanged.AddListener(OnDistanceDropDownClicked);
         if (wfs) wfs.ProjectedFeaturesFetched += OnFeaturesFetched;
         ShowState(loading: false, hasData: false);
     }
@@ -60,6 +63,12 @@ public class NearbyProjectsListController : MonoBehaviour
     {
         if (wfs) wfs.ProjectedFeaturesFetched -= OnFeaturesFetched;
         if (refreshButton) refreshButton.onClick.RemoveListener(OnRefreshClicked);
+    }
+
+    void OnDistanceDropDownClicked(int index)
+    {
+        wfs.boundingBoxSizeMeters = float.Parse(distanceDropdown.options[index].text.Split(' ')[0]);
+        OnRefreshClicked();
     }
 
     void OnRefreshClicked()
@@ -86,6 +95,8 @@ public class NearbyProjectsListController : MonoBehaviour
 
         // Hide existing items while loading (optional)
         for (int i = 0; i < _pool.Count; i++) _pool[i].gameObject.SetActive(false);
+
+        wfs.boundingBoxSizeMeters = 100f; 
 
         wfs?.RefreshProjectedFeatures();
     }

@@ -28,6 +28,7 @@ public class GeoObjectSpawner : MonoBehaviour
     [Header("Building Geometry")]
     [Tooltip("If provided, CreateBuilding will be used instead of a primitive cube.")]
     [SerializeField] private bool useBuildingGeometryFromTextField = false;
+    
 
     //This needs to be filled in from the start, information provided by the scene before 
     [SerializeField, TextArea(4, 10)] private string buildingCoordinatesLv95;
@@ -37,10 +38,10 @@ public class GeoObjectSpawner : MonoBehaviour
     [SerializeField] private CreateBuilding buildingFactory;
 
     [Header("Debug")]
-    [SerializeField, Tooltip("Bypass AR world positioning and place spawned objects at the scene origin.")]
     private bool debugSpawnAtProvidedCoordinates = false;
     public double east = 2739782.97;
     public double north = 1250944.04;
+    [SerializeField] private bool placeBuildingsAtZeroOrigin = false;
 
 
 
@@ -268,7 +269,13 @@ public class GeoObjectSpawner : MonoBehaviour
         buildingGo = building.GameObject;
         Debug.Log($"[GeoObjectSpawner] Building '{buildingNameToUse}' spawned at coordinates: {targetCoordinates} | Altitude: {altitude}m");
 
-        if (debugSpawnAtProvidedCoordinates)
+        if (placeBuildingsAtZeroOrigin)
+        {
+            buildingGo.transform.SetParent(transform, false);
+            buildingGo.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            Debug.Log("[GeoObjectSpawner] Building forced to origin.");
+        }
+        else if (debugSpawnAtProvidedCoordinates)
         {
             buildingGo.transform.SetParent(transform, false);
             buildingGo.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
