@@ -299,16 +299,24 @@ namespace Shared.Scripts.Building
 
         private static bool PointInTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c)
         {
-            float denominator = (b.y - c.y) * (a.x - c.x) + (c.x - b.x) * (a.y - c.y);
-            if (Mathf.Abs(denominator) < 1e-6f)
+            // Same-side edge function test (cross-product), tolerant to small numerical noise.
+            const float eps = 1e-5f;
+
+            // Reject degenerate triangles
+            float area2 = Cross(b - a, c - a);
+            if (Mathf.Abs(area2) < eps)
                 return false;
 
-            float w1 = ((b.y - c.y) * (p.x - c.x) + (c.x - b.x) * (p.y - c.y)) / denominator;
-            float w2 = ((c.y - a.y) * (p.x - c.x) + (a.x - c.x) * (p.y - c.y)) / denominator;
-            float w3 = 1f - w1 - w2;
+            float d1 = Cross(b - a, p - a);
+            float d2 = Cross(c - b, p - b);
+            float d3 = Cross(a - c, p - c);
 
-            const float epsilon = -1e-5f;
-            return w1 >= epsilon && w2 >= epsilon && w3 >= epsilon;
+            bool hasNeg = (d1 < -eps) || (d2 < -eps) || (d3 < -eps);
+            bool hasPos = (d1 >  eps) || (d2 >  eps) || (d3 >  eps);
+
+            // Inside if all edge functions have the same sign (allowing epsilon),
+            // meaning not both strictly positive and strictly negative.
+            return !(hasNeg && hasPos);
         }
 
         private static float SignedArea(IReadOnlyList<Vector2> polygon)
