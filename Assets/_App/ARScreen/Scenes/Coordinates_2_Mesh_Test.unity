@@ -128,7 +128,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1111431504}
-  - component: {fileID: 1111431500}
   - component: {fileID: 1111431499}
   - component: {fileID: 1111431498}
   m_Layer: 0
@@ -164,17 +163,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36d312637ba0be0468349169bdafe4b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  wfs: {fileID: 1111431500}
   positioningHelper: {fileID: 0}
   wpsManager: {fileID: 0}
-  east: 2739782.97
-  north: 1250944.04
   createCube: 0
   cubeSize: 5
   cubeHeightMeters: 5
   cubeMaterial: {fileID: 0}
-  instanceMaterial: 1
-  useBuildingGeometryFromTextField: 0
+  useBuildingGeometryFromTextField: 1
   buildingCoordinatesLv95: 2739557.919,1251149.381 2739557.452,1251149.386 2739562.926,1251164.836
     2739563.353,1251165.998 2739563.796,1251167.154 2739564.255,1251168.304 2739564.638,1251169.231
     2739565.031,1251170.154 2739565.433,1251171.073 2739565.513,1251171.252 2739565.593,1251171.43
@@ -229,29 +224,9 @@ MonoBehaviour:
   buildingName: Manual
   clearExistingFactoryBuildings: 0
   buildingFactory: {fileID: 1111431498}
-  debugSpawnAtOrigin: 1
---- !u!114 &1111431500
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1111431497}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 64a37cdd920f8ff4590d1579cfd917e3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  serviceEndpoint: https://www.geoportal.ch/services/wfs
-  typeNames: geoportal:a111_avdm01_amtlverm_fla
-  maxFeatureCount: 1000000
-  boundingBoxSizeMeters: 300
-  useDebugCoordinates: 1
-  debugLv95CoordinatesNorth: 2743009.24
-  debugLv95CoordinatesEast: 1252728.11
-  locationDesiredAccuracyMeters: 5
-  locationUpdateDistanceMeters: 0.5
-  locationServiceTimeoutSeconds: 20
+  east: 2739782.97
+  north: 1250944.04
+  placeBuildingsAtZeroOrigin: 1
 --- !u!4 &1111431504
 Transform:
   m_ObjectHideFlags: 0

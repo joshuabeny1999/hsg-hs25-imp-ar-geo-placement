@@ -71,7 +71,7 @@ namespace Shared.Scripts.Geo
         [SerializeField] private int maxFeatureCount = 1000000;
 
         [SerializeField, Tooltip("Width/height of the square bounding box centered around the player in meters.")]
-        private float boundingBoxSizeMeters = 300f;
+        public float boundingBoxSizeMeters = 250f;
 
 
         [Header("Debug Settings")]

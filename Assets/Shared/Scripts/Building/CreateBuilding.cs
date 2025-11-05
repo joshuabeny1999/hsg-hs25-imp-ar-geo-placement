@@ -112,10 +112,11 @@ namespace Shared.Scripts.Building
             bool includeSides = clampedThickness > 0.0001f;
             float polygonArea = SignedArea(polygon);
 
-            var vertices = new List<Vector3>(count + (includeSides ? count * 4 : 0));
-            var normals = new List<Vector3>(vertices.Capacity);
-            var uvs = new List<Vector2>(vertices.Capacity);
-            var meshTriangles = new List<int>(triangles.Count + (includeSides ? count * 6 : 0));
+            int vertexCapacity = count * 2 + (includeSides ? count * 4 : 0);
+            var vertices = new List<Vector3>(vertexCapacity);
+            var normals = new List<Vector3>(vertexCapacity);
+            var uvs = new List<Vector2>(vertexCapacity);
+            var meshTriangles = new List<int>(triangles.Count * 2 + (includeSides ? count * 6 : 0));
 
             // Top surface (facing up) - pivot at ground level, so top is at +thickness
             for (int i = 0; i < count; i++)
@@ -125,6 +126,15 @@ namespace Shared.Scripts.Building
                 normals.Add(Vector3.up);
                 // Think of changing possible to uvs.Add(new Vector2(p.x * uvScale.x, p.y * uvScale.y)); 
                 // To map texture properly on larger buildings
+                uvs.Add(p);
+            }
+
+            int bottomStart = vertices.Count;
+            for (int i = 0; i < count; i++)
+            {
+                Vector2 p = polygon[i];
+                vertices.Add(new Vector3(p.x, 0f, p.y));
+                normals.Add(Vector3.down);
                 uvs.Add(p);
             }
 
@@ -148,6 +158,17 @@ namespace Shared.Scripts.Building
                 meshTriangles.Add(first);
                 meshTriangles.Add(topSecond);
                 meshTriangles.Add(topThird);
+            }
+
+            for (int i = 0; i < triangles.Count; i += 3)
+            {
+                int first = bottomStart + triangles[i];
+                int second = bottomStart + triangles[i + 1];
+                int third = bottomStart + triangles[i + 2];
+
+                meshTriangles.Add(first);
+                meshTriangles.Add(third);
+                meshTriangles.Add(second);
             }
 
             if (includeSides)

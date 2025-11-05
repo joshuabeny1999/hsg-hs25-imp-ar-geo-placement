@@ -16,6 +16,8 @@ public class NearbyProjectsListController : MonoBehaviour
 
     [Header("UI")]
     [SerializeField] private Button refreshButton;
+
+    [SerializeField] private TMP_Dropdown distanceDropdown;
     [SerializeField] private Transform listContent;             // ScrollView/Viewport/Content
     [SerializeField] private BuildingListItemView itemPrefab;   // Your row prefab
 
@@ -46,6 +48,7 @@ public class NearbyProjectsListController : MonoBehaviour
     void Awake()
     {
         if (refreshButton) refreshButton.onClick.AddListener(OnRefreshClicked);
+        if (distanceDropdown) distanceDropdown.onValueChanged.AddListener(OnDistanceDropDownClicked);
         if (wfs) wfs.ProjectedFeaturesFetched += OnFeaturesFetched;
         ShowState(loading: false, hasData: false);
     }
@@ -60,14 +63,24 @@ public class NearbyProjectsListController : MonoBehaviour
     {
         if (wfs) wfs.ProjectedFeaturesFetched -= OnFeaturesFetched;
         if (refreshButton) refreshButton.onClick.RemoveListener(OnRefreshClicked);
+        if (distanceDropdown) distanceDropdown.onValueChanged.RemoveListener(OnDistanceDropDownClicked);
+    }
+
+    void OnDistanceDropDownClicked(int index)
+    {
+        if(wfs == null || distanceDropdown == null) return;
+        wfs.boundingBoxSizeMeters = float.Parse(distanceDropdown.options[index].text.Split(' ')[0]);
+        OnRefreshClicked();
     }
 
     void OnRefreshClicked()
     {
         if (_isLoading) return;
         _isLoading = true;
-        
+
         if (refreshButton) refreshButton.interactable = false;
+        if (distanceDropdown) distanceDropdown.interactable = false;
+
 
         if (Input.location.status == LocationServiceStatus.Running)
         {
@@ -94,6 +107,7 @@ public class NearbyProjectsListController : MonoBehaviour
     {
         _isLoading = false;
         if (refreshButton) refreshButton.interactable = true;
+        if (distanceDropdown) distanceDropdown.interactable = true;
 
         _current = list ?? new List<ProjectedBuilding>();
 
