@@ -70,7 +70,6 @@ public class NearbyProjectsListController : MonoBehaviour
     {
         if(wfs == null || distanceDropdown == null) return;
         wfs.boundingBoxSizeMeters = float.Parse(distanceDropdown.options[index].text.Split(' ')[0]);
-        Debug.Log("Distance filter changed to: " + wfs.boundingBoxSizeMeters + " meters");
         OnRefreshClicked();
     }
 
@@ -78,8 +77,10 @@ public class NearbyProjectsListController : MonoBehaviour
     {
         if (_isLoading) return;
         _isLoading = true;
-        
+
         if (refreshButton) refreshButton.interactable = false;
+        if (distanceDropdown) distanceDropdown.interactable = false;
+
 
         if (Input.location.status == LocationServiceStatus.Running)
         {
@@ -106,6 +107,7 @@ public class NearbyProjectsListController : MonoBehaviour
     {
         _isLoading = false;
         if (refreshButton) refreshButton.interactable = true;
+        if (distanceDropdown) distanceDropdown.interactable = true;
 
         _current = list ?? new List<ProjectedBuilding>();
 
