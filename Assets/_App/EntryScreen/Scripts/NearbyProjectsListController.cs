@@ -63,11 +63,14 @@ public class NearbyProjectsListController : MonoBehaviour
     {
         if (wfs) wfs.ProjectedFeaturesFetched -= OnFeaturesFetched;
         if (refreshButton) refreshButton.onClick.RemoveListener(OnRefreshClicked);
+        if (distanceDropdown) distanceDropdown.onValueChanged.RemoveListener(OnDistanceDropDownClicked);
     }
 
     void OnDistanceDropDownClicked(int index)
     {
+        if(wfs == null || distanceDropdown == null) return;
         wfs.boundingBoxSizeMeters = float.Parse(distanceDropdown.options[index].text.Split(' ')[0]);
+        Debug.Log("Distance filter changed to: " + wfs.boundingBoxSizeMeters + " meters");
         OnRefreshClicked();
     }
 
@@ -95,8 +98,6 @@ public class NearbyProjectsListController : MonoBehaviour
 
         // Hide existing items while loading (optional)
         for (int i = 0; i < _pool.Count; i++) _pool[i].gameObject.SetActive(false);
-
-        wfs.boundingBoxSizeMeters = 100f; 
 
         wfs?.RefreshProjectedFeatures();
     }
