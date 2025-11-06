@@ -12,16 +12,15 @@ using Shared.Scripts.Building;
 public class InfoPanelController : MonoBehaviour
 {
     [Header("Wiring")]
-    [SerializeField] private GameObject rootPanel;           // InfoPopup panel
-    [SerializeField] private ScrollRect scrollRect;          // Scroll View
-    [SerializeField] private Transform contentRoot;          // Content under Scroll View
-    [SerializeField] private GameObject accordionSectionPrefab;
-    [SerializeField] private GameObject rowPrefab;
+    [SerializeField] private GameObject rootPanel;   // InfoPopup panel (visual)
+    [SerializeField] private ScrollRect scrollRect;  // Scroll View
+    [SerializeField] private Transform contentRoot;  // Content under Scroll View
+    [SerializeField] private GameObject rowPrefab;   // uses InfoRow
     [SerializeField] private TMP_Text headerTitle;
     [SerializeField] private Button closeButton;
 
     [Header("Services in Scene")]
-    [SerializeField] private GeoInfoWMSAPI wmsApi;           // optional, for Gebäudestatus (WMS)
+    [SerializeField] private GeoInfoWMSAPI wmsApi;   // optional, for Gebäudestatus (WMS)
 
     [Header("Options")]
     [SerializeField] private bool autoFetchOnOpen = true;
@@ -33,7 +32,7 @@ public class InfoPanelController : MonoBehaviour
     {
         if (closeButton) closeButton.onClick.AddListener(Close);
         if (headerTitle) headerTitle.text = "Information";
-        if (rootPanel) rootPanel.SetActive(false);
+        if (rootPanel) rootPanel.SetActive(false);   // hide visually; controller object stays active
     }
 
     public void Open()
@@ -60,13 +59,16 @@ public class InfoPanelController : MonoBehaviour
     private IEnumerator BuildAndShow()
     {
         ClearContent();
+        Debug.Log("[InfoPanel] Build and show");
 
-        // -------- 1) Allgemein (immer)
-        var secGeneral = CreateSection("Allgemein", expanded: true);
-        AddRow(secGeneral, "Name", Safe(SelectedTargetContext.Name));
-        AddRow(secGeneral, "EGID", Safe(SelectedTargetContext.Egid));
-        AddRow(secGeneral, "Latitude", SelectedTargetContext.Latitude.ToString("F6", CultureInfo.InvariantCulture));
-        AddRow(secGeneral, "Longitude", SelectedTargetContext.Longitude.ToString("F6", CultureInfo.InvariantCulture));
+        // -------- 1) Titel: Allgemein
+        AddTitle("Allgemein");
+
+        // rows
+        AddRow("Name", Safe(SelectedTargetContext.Name));
+        AddRow("EGID", Safe(SelectedTargetContext.Egid));
+        AddRow("Latitude", SelectedTargetContext.Latitude.ToString("F6", CultureInfo.InvariantCulture));
+        AddRow("Longitude", SelectedTargetContext.Longitude.ToString("F6", CultureInfo.InvariantCulture));
 
         // LV95 aus Polygoncentroid oder WGS84 ableiten
         double east = 0, north = 0;
@@ -87,12 +89,12 @@ public class InfoPanelController : MonoBehaviour
 
         if (haveEN)
         {
-            AddRow(secGeneral, "East (LV95)", east.ToString("F2", CultureInfo.InvariantCulture));
-            AddRow(secGeneral, "North (LV95)", north.ToString("F2", CultureInfo.InvariantCulture));
+            AddRow("East (LV95)", east.ToString("F2", CultureInfo.InvariantCulture));
+            AddRow("North (LV95)", north.ToString("F2", CultureInfo.InvariantCulture));
         }
 
         if (SelectedTargetContext.ElevationMeters.HasValue)
-            AddRow(secGeneral, "Geländehöhe (m.ü.M.)", SelectedTargetContext.ElevationMeters.Value.ToString("F2", CultureInfo.InvariantCulture));
+            AddRow("Geländehöhe (m.ü.M.)", SelectedTargetContext.ElevationMeters.Value.ToString("F2", CultureInfo.InvariantCulture));
 
         // -------- 2) Stammdaten (liefert BFS/LiegNr/EGRID für Flächenblatt)
         GeoPortalStammdatenResponse stammdaten = null;
@@ -102,14 +104,16 @@ public class InfoPanelController : MonoBehaviour
             yield return GeoInfoAPI.FetchStammdaten(east, north, r => { stammdaten = r; sdDone = true; }, "de");
             while (!sdDone) yield return null;
 
-            var secSd = CreateSection("Liegenschaft (Stammdaten)", expanded: true);
+            AddTitle("Liegenschaft (Stammdaten)");
             if (stammdaten == null || stammdaten.IsEmpty)
             {
-                AddRow(secSd, "Hinweis", "Keine Stammdaten verfügbar.");
+                Debug.Log("[InfoPanel] Stammdaten: empty");
+                AddRow("Hinweis", "Keine Stammdaten verfügbar.");
             }
             else
             {
-                RenderStammdaten(secSd, stammdaten);
+                Debug.Log($"[InfoPanel] Stammdaten: {stammdaten.liegenschaft.nummer} / {stammdaten.liegenschaft.egrid}");
+                RenderStammdaten(stammdaten);
             }
         }
 
@@ -130,23 +134,25 @@ public class InfoPanelController : MonoBehaviour
             yield return GeoInfoAPI.FetchFlaechenblattByIds(bfs, liegnr, flaechenblattTyp, egrid, r => { fb = r; fbDone = true; }, "de");
             while (!fbDone) yield return null;
 
-            var secFb = CreateSection("Liegenschaft (Flächenblatt)", expanded: true);
+            AddTitle("Liegenschaft (Flächenblatt)");
             if (fb == null || fb.error)
             {
-                AddRow(secFb, "Hinweis", "Keine Flächenblatt-Daten.");
+                Debug.Log("[InfoPanel] Flächenblatt: empty");
+                AddRow("Hinweis", "Keine Flächenblatt-Daten.");
             }
             else
             {
-                RenderFlaechenblatt(secFb, fb);
+                Debug.Log("[Info Panel] Flächenblatt: found");
+                RenderFlaechenblatt(fb);
             }
         }
         else
         {
-            var secFb = CreateSection("Liegenschaft (Flächenblatt)", expanded: false);
-            AddRow(secFb, "Hinweis", "Stammdaten unvollständig (BFS/LiegNr/EGRID fehlen).");
+            AddTitle("Liegenschaft (Flächenblatt)");
+            AddRow("Hinweis", "Stammdaten unvollständig (BFS/LiegNr/EGRID fehlen).");
         }
 
-        // -------- 4) Gebäudestatus (WMS) – optional / kann fehlen
+        // -------- 4) Gebäudestatus (WMS) – optional
         if (wmsApi != null && haveEN)
         {
             WmsBuildingResult wms = null;
@@ -154,15 +160,16 @@ public class InfoPanelController : MonoBehaviour
             wmsApi.FetchByCentroid(east, north, res => { wms = res; done = true; });
             while (!done) yield return null;
 
+            AddTitle("Gebäudestatus (WMS)");
             if (wms != null)
             {
-                var secWms = CreateSection("Gebäudestatus (WMS)", expanded: true);
-                RenderWmsPropertiesGrouped(secWms, wms);
+                Debug.Log("[Info Panel] Gebäudestatus (WMS): found");
+                RenderWmsProperties(wms);
             }
             else
             {
-                var secWms = CreateSection("Gebäudestatus (WMS)", expanded: false);
-                AddRow(secWms, "Hinweis", "Keine Daten gefunden.");
+                Debug.Log("[Info Panel] Gebäudestatus (WMS): empty");
+                AddRow("Hinweis", "Keine Daten gefunden.");
             }
         }
 
@@ -174,130 +181,130 @@ public class InfoPanelController : MonoBehaviour
         }
     }
 
-    // ---------------- render helpers ----------------
+    // ---------------- render helpers (no accordion) ----------------
 
-    private void RenderStammdaten(AccordionSection section, GeoPortalStammdatenResponse sd)
+    private void RenderStammdaten(GeoPortalStammdatenResponse sd)
     {
-        var s1 = CreateSubTitle(section, "Allgemein");
+        // Allgemein
+        AddSubtitle("Allgemein");
         if (sd.gemeinde != null)
         {
-            AddRow(s1, "Gemeinde", Safe(sd.gemeinde.name));
-            AddRow(s1, "BFS-Nr.", Safe(sd.gemeinde.bfsnr));
-            AddRow(s1, "Kanton", Safe(sd.gemeinde.kanton));
+            AddRow("Gemeinde", Safe(sd.gemeinde.name));
+            AddRow("BFS-Nr.", Safe(sd.gemeinde.bfsnr));
+            AddRow("Kanton", Safe(sd.gemeinde.kanton));
         }
         if (sd.liegenschaft != null)
         {
-            AddRow(s1, "Grundstücksnummer", Safe(sd.liegenschaft.nummer));
-            AddRow(s1, "EGRID", Safe(sd.liegenschaft.egrid));
+            AddRow("Grundstücksnummer", Safe(sd.liegenschaft.nummer));
+            AddRow("EGRID", Safe(sd.liegenschaft.egrid));
         }
 
+        // Adressen
         if (sd.adressen != null && sd.adressen.Length > 0)
         {
-            var s2 = CreateSubTitle(section, "Adresse(n)");
+            AddSubtitle("Adresse(n)");
             foreach (var a in sd.adressen)
             {
                 string line = $"{Safe(a.street, "")} {Safe(a.number, "")}".Trim();
                 if (!string.IsNullOrEmpty(a.zip)) line = $"{line}, {a.zip}";
-                AddRow(s2, "Adresse", Safe(line));
+                AddRow("Adresse", Safe(line));
             }
         }
 
-        if (!string.IsNullOrEmpty(sd.oerebUrl) || !string.IsNullOrEmpty(sd.oerebPortalUrl))
-        {
-            var s3 = CreateSubTitle(section, "ÖREB");
-            if (!string.IsNullOrEmpty(sd.oerebUrl)) AddRow(s3, "PDF", sd.oerebUrl);
-            if (!string.IsNullOrEmpty(sd.oerebPortalUrl)) AddRow(s3, "Portal", sd.oerebPortalUrl);
-        }
     }
 
-    private void RenderWmsPropertiesGrouped(AccordionSection section, WmsBuildingResult wms)
+    private void RenderWmsProperties(WmsBuildingResult wms)
     {
-        AccordionSection current = section;
-
         foreach (var p in wms.Properties)
         {
             if (IsEmpty(p.Value)) continue;
 
             if (string.Equals(p.Type, "title", StringComparison.OrdinalIgnoreCase))
             {
-                current = CreateSubTitle(section, p.Label);
+                AddSubtitle(p.Label);
             }
             else
             {
-                AddRow(current, p.Label, WmsValueToDisplay(p.Value));
+                AddRow(p.Label, WmsValueToDisplay(p.Value));
             }
         }
     }
 
-    private void RenderFlaechenblatt(AccordionSection section, GeoPortalFlaechenblattResponse fb)
+    private void RenderFlaechenblatt(GeoPortalFlaechenblattResponse fb)
     {
-        var s1 = CreateSubTitle(section, "Liegenschaft");
+        // Liegenschaft
+        AddSubtitle("Liegenschaft");
         if (fb.Liegenschaft != null)
         {
-            AddRow(s1, "Parzelle", Safe(fb.Liegenschaft.parznr));
-            AddRow(s1, "EGRID", Safe(fb.Liegenschaft.egrid));
-            AddRow(s1, "Gemeinde", Safe(fb.Liegenschaft.gemeinde));
-            AddRow(s1, "Lokalname", Safe(fb.Liegenschaft.lokalname));
-            AddRow(s1, "Adresse", Safe(fb.Liegenschaft.strasse));
-            AddRow(s1, "Fläche (m²)", Safe(fb.Liegenschaft.flaeche));
-            AddRow(s1, "Plan-Nr.", Safe(fb.Liegenschaft.plannr));
-            AddRow(s1, "Kanton", Safe(fb.Liegenschaft.kanton));
-            AddRow(s1, "Eigentumsform", Safe(fb.Liegenschaft.eigentumsform));
-            AddRow(s1, "EigForm", Safe(fb.Liegenschaft.eigform));
-            AddRow(s1, "Typ", Safe(fb.Liegenschaft.typ));
+            AddRow("Parzelle", Safe(fb.Liegenschaft.parznr));
+            AddRow("EGRID", Safe(fb.Liegenschaft.egrid));
+            AddRow("Gemeinde", Safe(fb.Liegenschaft.gemeinde));
+            AddRow("Lokalname", Safe(fb.Liegenschaft.lokalname));
+            AddRow("Adresse", Safe(fb.Liegenschaft.strasse));
+            AddRow("Fläche (m²)", Safe(fb.Liegenschaft.flaeche));
+            AddRow("Plan-Nr.", Safe(fb.Liegenschaft.plannr));
+            AddRow("Kanton", Safe(fb.Liegenschaft.kanton));
+            AddRow("Eigentumsform", Safe(fb.Liegenschaft.eigentumsform));
+            AddRow("EigForm", Safe(fb.Liegenschaft.eigform));
+            AddRow("Typ", Safe(fb.Liegenschaft.typ));
         }
 
+        // Zonen
         if (fb.zoneAreas != null && fb.zoneAreas.Length > 0)
         {
-            var s2 = CreateSubTitle(section, "Zonen");
-            foreach (var z in fb.zoneAreas)
-                AddRow(s2, z.label, z.value.ToString(CultureInfo.InvariantCulture));
+            AddSubtitle("Zonen");
+            foreach (var z in fb.zoneAreas) {
+                var label = string.IsNullOrEmpty(z.label) ? "" : z.label;
+                var val = $"{z.value.ToString(CultureInfo.InvariantCulture)} m²";
+                AddRow(label, val);
+            }
         }
 
+        // Hangneigung
         if (fb.slopeAreas != null && fb.slopeAreas.Length > 0)
         {
-            var s3 = CreateSubTitle(section, "Hangneigung");
+            AddSubtitle("Hangneigung");
             foreach (var s in fb.slopeAreas)
-                AddRow(s3, s.label, s.value.ToString(CultureInfo.InvariantCulture));
+            {
+                var label = string.IsNullOrEmpty(s.label) ? "" : s.label;
+                var val = $"{s.value.ToString(CultureInfo.InvariantCulture)} m²";
+                AddRow(label, val);
+            }
         }
 
+        // Areal
         if (fb.Areal != null && fb.Areal.Length > 0)
         {
-            var s4 = CreateSubTitle(section, "Areal / Teilflächen");
+            AddSubtitle("Areal / Teilflächen");
             foreach (var a in fb.Areal)
             {
                 var label = string.IsNullOrEmpty(a.art) ? "Objekt" : a.art;
                 var val = string.IsNullOrEmpty(a.flaeche) ? "" : $"{a.flaeche} m²";
-                AddRow(s4, label, val);
+                AddRow(label, val);
             }
         }
     }
 
-    // ---------------- section/row creation ----------------
+    // ---------------- row creation helpers ----------------
 
-    private AccordionSection CreateSection(string title, bool expanded)
+    private void AddTitle(string text)
     {
-        var go = Instantiate(accordionSectionPrefab, contentRoot);
-        var sec = go.GetComponent<AccordionSection>();
-        sec.SetTitle(title);
-        sec.SetExpanded(expanded);
-        return sec;
+        var go = Instantiate(rowPrefab, contentRoot);
+        var ir = go.GetComponent<InfoRow>();
+        ir.SetTitle(text); // big, bold, no value
     }
 
-    private AccordionSection CreateSubTitle(AccordionSection parent, string subtitle)
+    private void AddSubtitle(string text)
     {
-        var go = Instantiate(accordionSectionPrefab, parent.ContentRoot);
-        var sec = go.GetComponent<AccordionSection>();
-        sec.SubStyle = true; // optional: smaller style
-        sec.SetTitle(subtitle);
-        sec.SetExpanded(true);
-        return sec;
+        var go = Instantiate(rowPrefab, contentRoot);
+        var ir = go.GetComponent<InfoRow>();
+        ir.SetSubtitle(text); // bold (slightly smaller than title)
     }
 
-    private void AddRow(AccordionSection target, string label, string value)
+    private void AddRow(string label, string value)
     {
-        var row = Instantiate(rowPrefab, target.ContentRoot);
-        var ir = row.GetComponent<InfoRow>();
+        var go = Instantiate(rowPrefab, contentRoot);
+        var ir = go.GetComponent<InfoRow>();
         ir.Set(label, value);
     }
 
