@@ -154,13 +154,5 @@ namespace Shared.Scripts.Geo
                 BuildingFetched?.Invoke(null);
             }
         }
-
-        // Helper: Für UI hübsch formatieren (optional)
-        public static string FormatValue(JToken v, string dash = "—")
-        {
-            if (v == null || v.Type == JTokenType.Null) return dash;
-            if (v.Type == JTokenType.String) return v.ToString();    // leerer String bleibt leer
-            return v.ToString();
-        }
     }
 }

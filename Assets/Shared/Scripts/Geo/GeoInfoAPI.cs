@@ -187,8 +187,8 @@ namespace Shared.Scripts.Geo
     {
         public double east;
         public double north;
-        public double elevation;          // Terrain height (AMSL)
-        public double surface;            // Building top height (AMSL)
+        public double elevation;          // Terrain height
+        public double surface;            // Building top height
         public double elevationDifference;
     }
 
@@ -221,8 +221,8 @@ namespace Shared.Scripts.Geo
     [Serializable]
     public class GeoPortalLiegenschaft
     {
-        public string nummer; // Grundstücksnummer
-        public string egrid;  // EGRID
+        public string nummer;
+        public string egrid;
     }
 
     [Serializable]
@@ -239,13 +239,13 @@ namespace Shared.Scripts.Geo
         public bool error;
         public GeoPortalFlaechenblattLiegenschaft Liegenschaft;
 
-        public GeoPortalLabelValue[] slopeAreas;   // [{label, value}]
+        public GeoPortalLabelValue[] slopeAreas;
         public int slopeAreaDifference;
 
-        public GeoPortalZoneArea[] zoneAreas;      // [{label, shortLabel, value}]
+        public GeoPortalZoneArea[] zoneAreas;
         public int zoneAreaDifference;
 
-        public GeoPortalAreal[] Areal;            // Liste Teilflächen/Objekte
+        public GeoPortalAreal[] Areal;
 
         public int coverAreaDifference;
     }
@@ -258,14 +258,14 @@ namespace Shared.Scripts.Geo
         public string gemeinde;
         public string mutnr;
         public string lokalname;
-        public string strasse;   // z. B. "Zürcherstrasse 137"
-        public string flaeche;   // z. B. "513" (kommt als String)
+        public string strasse;
+        public string flaeche;
         public string plannr;
         public string kanton;
-        public string eigentumsform;  // kann null sein
+        public string eigentumsform;
         public string eigform;
-        public string typ;       // z. B. "L"
-        public string geom;      // MULTIPOLYGON(...), POLYGON(...)
+        public string typ;
+        public string geom;
     }
 
     [Serializable]
@@ -286,14 +286,14 @@ namespace Shared.Scripts.Geo
     [Serializable]
     public class GeoPortalAreal
     {
-        public string art;       // z. B. "Gebäude", "Gartenanlage"
-        public string egid;      // kann null sein
-        public string asseknr;   // z. B. "5028J"
-        public string flaeche;   // z. B. "173" (als String)
-        public string typ;       // z. B. "O"
-        public string artgroup;  // kann null sein
-        public string adresse;   // kann null sein
-        public string geom;      // POLYGON(...) | MULTIPOLYGON(...)
+        public string art;
+        public string egid;
+        public string asseknr;
+        public string flaeche;
+        public string typ;
+        public string artgroup;
+        public string adresse;
+        public string geom;
     }
 
 

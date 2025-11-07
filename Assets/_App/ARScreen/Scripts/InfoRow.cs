@@ -38,7 +38,7 @@ public class InfoRow : MonoBehaviour
         {
             labelText.text = label ?? "";
             labelText.fontSize = rowFontSize;
-            labelText.fontStyle = FontStyles.Normal;
+            labelText.fontStyle = FontStyles.Bold;
         }
 
         if (labelLayout)
@@ -106,6 +106,6 @@ public class InfoRow : MonoBehaviour
         var p = horizontalLayoutGroup.padding;
         p.top = top;
         horizontalLayoutGroup.padding = p;
-        horizontalLayoutGroup.SetLayoutHorizontal(); // optional refresh
+        horizontalLayoutGroup.SetLayoutHorizontal();
     }
 }
