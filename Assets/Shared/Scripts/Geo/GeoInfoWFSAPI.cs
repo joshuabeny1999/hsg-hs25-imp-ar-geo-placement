@@ -90,10 +90,10 @@ namespace Shared.Scripts.Geo
         private float elevationRequestDelaySeconds = 0.03f;
 
         
-    private const string StatusFilter = "projektiert";
-    private const string SrsName = "urn:ogc:def:crs:EPSG::2056";
+        private const string StatusFilter = "projektiert";
+        private const string SrsName = "urn:ogc:def:crs:EPSG::2056";
 
-    private bool _locationInitialized;
+        private bool _locationInitialized;
 
         public event Action<List<ProjectedBuilding>> ProjectedFeaturesFetched;
 
@@ -144,10 +144,7 @@ namespace Shared.Scripts.Geo
         public IEnumerator FetchProjectedFeatures(double latitude, double longitude,
             Action<List<ProjectedBuilding>> onCompleted)
         {
-            double radius = Mathf.Max(1f, boundingBoxSizeMeters);
-            ProjNetTransformCH.WGS84ToLV95(latitude, longitude, out double east, out double north);
-
-            var requestUrl = BuildServiceUrl(east, north, radius);
+            var requestUrl = BuildServiceUrl(latitude, longitude);
 
             if (string.IsNullOrWhiteSpace(requestUrl))
             {
@@ -173,18 +170,6 @@ namespace Shared.Scripts.Geo
                 }
 
                 var features = ParseProjectedFeatures(request.downloadHandler.text);
-
-                if (features.Count > 0)
-                {
-                    double radiusSquared = radius * radius;
-                    features.RemoveAll(building =>
-                    {
-                        double dEast = building.EastCentroid - east;
-                        double dNorth = building.NorthCentroid - north;
-                        return (dEast * dEast) + (dNorth * dNorth) > radiusSquared;
-                    });
-                }
-
                 if (waitForElevation && features.Count > 0)
                 {
                     yield return EnrichElevationBlocking(features);
@@ -195,20 +180,24 @@ namespace Shared.Scripts.Geo
             }
         }
 
-        private string BuildServiceUrl(double east, double north, double radius)
+        private string BuildServiceUrl(double latitude, double longitude)
         {
             if (string.IsNullOrWhiteSpace(serviceEndpoint) || string.IsNullOrWhiteSpace(typeNames))
             {
                 return string.Empty;
             }
 
+            ProjNetTransformCH.WGS84ToLV95(latitude, longitude, out double east, out double north);
+
+            double half = Mathf.Max(1f, boundingBoxSizeMeters) * 0.5f;
+
             var bbox = string.Format(
                 CultureInfo.InvariantCulture,
                 "{0},{1},{2},{3},{4}",
-                east - radius,
-                north - radius,
-                east + radius,
-                north + radius,
+                east - half,
+                north - half,
+                east + half,
+                north + half,
                 SrsName);
 
             var builder = new StringBuilder();

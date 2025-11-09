@@ -1,64 +1,301 @@
+using System;
 using System.Collections;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.Networking;
 
 namespace Shared.Scripts.Geo
 {
     /// <summary>
-    /// Helper for querying Swiss GeoPortal elevation service.
-    /// Example API: https://www.geoportal.ch/api/elevation/point?lang=de&east=2739782.97&north=1250944.04
+    /// Helper for querying Swiss GeoPortal services:
+    /// - Elevation (/api/elevation/point)
+    /// - Stammdaten (/search/stammdaten)
+    /// - Flächenblatt (/search/flaechenblatt)
+    /// All coordinates are LV95 (EPSG:2056).
     /// </summary>
     public static class GeoInfoAPI
     {
-        private const string BaseUrl = "https://www.geoportal.ch/api/";
+        // -------- Base URLs (can be customized in code if needed) ----------
+        public static string ApiBaseUrl    = "https://www.geoportal.ch/api/";
+        public static string SearchBaseUrl = "https://www.geoportal.ch/search/";
+
+        // -------------------------------------------------------------------
+        #region Elevation
 
         /// <summary>
-        /// Fetches terrain elevation (and optionally surface) data for a given LV95 (EPSG:2056) coordinate.
+        /// Fetches terrain and surface elevation data for a given LV95 (EPSG:2056) coordinate.
         /// </summary>
-        /// <param name="east">LV95 east coordinate (meters)</param>
-        /// <param name="north">LV95 north coordinate (meters)</param>
-        /// <param name="onResult">Callback invoked when response is received (even on error)</param>
-        /// <returns>IEnumerator coroutine (use StartCoroutine)</returns>
-        public static IEnumerator FetchElevation(double east, double north, System.Action<SwissElevationResponse> onResult)
+        public static IEnumerator FetchElevation(double east, double north, Action<GeoPortalElevationResponse> onResult)
         {
-            string url = $"{BaseUrl}elevation/point?lang=de&east={east:F2}&north={north:F2}";
+            string url = $"{ApiBaseUrl}elevation/point?lang=de&east={east.ToString("F2", CultureInfo.InvariantCulture)}&north={north.ToString("F2", CultureInfo.InvariantCulture)}";
             using var req = UnityWebRequest.Get(url);
             req.timeout = 10;
 
             yield return req.SendWebRequest();
 
-            SwissElevationResponse result = null;
+            GeoPortalElevationResponse result = null;
 
             if (req.result == UnityWebRequest.Result.Success)
             {
                 try
                 {
-                    result = JsonUtility.FromJson<SwissElevationResponse>(req.downloadHandler.text);
+                    result = JsonUtility.FromJson<GeoPortalElevationResponse>(req.downloadHandler.text);
                 }
-                catch (System.Exception ex)
+                catch (Exception ex)
                 {
-                    Debug.LogWarning($"[GeoInfoAPI] Failed to parse response: {ex.Message}");
+                    Debug.LogWarning($"[GeoInfoAPI] Failed to parse elevation response: {ex.Message}");
                 }
             }
             else
             {
-                Debug.LogWarning($"[GeoInfoAPI] HTTP error: {req.error}");
+                Debug.LogWarning($"[GeoInfoAPI] HTTP error (elevation): {req.error}");
             }
 
             onResult?.Invoke(result);
         }
+
+        #endregion
+        // -------------------------------------------------------------------
+        #region Stammdaten
+
+        /// <summary>
+        /// Fetches property information (stammdaten) for a given LV95 coordinate.
+        /// Example: /search/stammdaten/?search=coor&coor=2704033.87,1232743.82&lang=de
+        /// </summary>
+        public static IEnumerator FetchStammdaten(
+            double east,
+            double north,
+            Action<GeoPortalStammdatenResponse> onResult,
+            string lang = "de")
+        {
+            string url =
+                $"{SearchBaseUrl}stammdaten/?search=coor" +
+                $"&coor={east.ToString("F6", CultureInfo.InvariantCulture)},{north.ToString("F6", CultureInfo.InvariantCulture)}" +
+                $"&noOwners=" +
+                $"&lang={lang}";
+
+            using var req = UnityWebRequest.Get(url);
+            req.timeout = 10;
+
+            yield return req.SendWebRequest();
+
+            GeoPortalStammdatenResponse result = null;
+
+            if (req.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    result = JsonUtility.FromJson<GeoPortalStammdatenResponse>(req.downloadHandler.text);
+
+                    if (result != null && result.liegenschaft != null && !string.IsNullOrEmpty(result.liegenschaft.egrid))
+                    {
+                        var egrid = result.liegenschaft.egrid;
+                        if (!string.IsNullOrEmpty(result.oerebUrl))
+                            result.oerebUrl = result.oerebUrl.Replace("{{ egrid }}", egrid);
+                        if (!string.IsNullOrEmpty(result.oerebPortalUrl))
+                            result.oerebPortalUrl = result.oerebPortalUrl.Replace("{{ egrid }}", egrid);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[GeoInfoAPI] Failed to parse stammdaten response: {ex.Message}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[GeoInfoAPI] HTTP error (stammdaten): {req.error}");
+            }
+
+            onResult?.Invoke(result);
+        }
+
+        #endregion
+        // -------------------------------------------------------------------
+        #region Flächenblatt
+
+        /// <summary>
+        /// Holt das "Flächenblatt" typisiert via festen IDs.
+        /// Beispiel:
+        /// /search/flaechenblatt/?bfs=3340&liegnr=4553J&typ=L&egrid=CH579177147966&lang=de
+        /// </summary>
+        /// <param name="bfs">Gemeinde BFS-Nummer, z.B. "3340"</param>
+        /// <param name="liegnr">Liegenschafts-/Parzellen-Nr., z.B. "4553J"</param>
+        /// <param name="typ">Typ (z.B. "L")</param>
+        /// <param name="egrid">EGRID, z.B. "CH579177147966"</param>
+        /// <param name="onResult">Callback mit parsebarem Ergebnis (oder null)</param>
+        /// <param name="lang">"de" (Default) oder andere unterstützte Sprache</param>
+        public static IEnumerator FetchFlaechenblattByIds(
+            string bfs,
+            string liegnr,
+            string typ,
+            string egrid,
+            Action<GeoPortalFlaechenblattResponse> onResult,
+            string lang = "de")
+        {
+            if (string.IsNullOrWhiteSpace(bfs) ||
+                string.IsNullOrWhiteSpace(liegnr) ||
+                string.IsNullOrWhiteSpace(typ) ||
+                string.IsNullOrWhiteSpace(egrid))
+            {
+                Debug.LogWarning("[GeoInfoAPI] FetchFlaechenblattByIds: required parameter missing.");
+                onResult?.Invoke(null);
+                yield break;
+            }
+
+            string url =
+                $"{SearchBaseUrl}flaechenblatt/?" +
+                $"bfs={UnityWebRequest.EscapeURL(bfs)}" +
+                $"&liegnr={UnityWebRequest.EscapeURL(liegnr)}" +
+                $"&typ={UnityWebRequest.EscapeURL(typ)}" +
+                $"&egrid={UnityWebRequest.EscapeURL(egrid)}" +
+                $"&lang={UnityWebRequest.EscapeURL(lang)}";
+
+            using var req = UnityWebRequest.Get(url);
+            req.timeout = 12;
+
+            yield return req.SendWebRequest();
+
+            GeoPortalFlaechenblattResponse result = null;
+
+            if (req.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    result = JsonUtility.FromJson<GeoPortalFlaechenblattResponse>(req.downloadHandler.text);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[GeoInfoAPI] Failed to parse flaechenblatt response: {ex.Message}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[GeoInfoAPI] HTTP error (flaechenblatt): {req.error}");
+            }
+
+            onResult?.Invoke(result);
+        }
+
+        #endregion
     }
 
-    /// <summary>
-    /// Response model for Swiss GeoPortal elevation API.
-    /// </summary>
-    [System.Serializable]
-    public class SwissElevationResponse
+    // -----------------------------------------------------------------------
+    #region Models
+
+    [Serializable]
+    public class GeoPortalElevationResponse
     {
         public double east;
         public double north;
-        public double elevation;          // Terrain height (AMSL)
-        public double surface;            // Building top height (AMSL)
+        public double elevation;          // Terrain height
+        public double surface;            // Building top height
         public double elevationDifference;
     }
+
+    [Serializable]
+    public class GeoPortalStammdatenResponse
+    {
+        public GeoPortalGemeinde gemeinde;
+        public GeoPortalLiegenschaft liegenschaft;
+
+        public bool eigentuemerChallenge;
+        public GeoPortalAdresse[] adressen;
+
+        public string oerebUrl;
+        public string oerebPortalUrl;
+
+        /// <summary>
+        /// True if no liegenschaft (e.g. outside valid area)
+        /// </summary>
+        public bool IsEmpty => liegenschaft == null || string.IsNullOrEmpty(liegenschaft.egrid);
+    }
+
+    [Serializable]
+    public class GeoPortalGemeinde
+    {
+        public string name;
+        public string bfsnr;
+        public string kanton;
+    }
+
+    [Serializable]
+    public class GeoPortalLiegenschaft
+    {
+        public string nummer;
+        public string egrid;
+    }
+
+    [Serializable]
+    public class GeoPortalAdresse
+    {
+        public string street;
+        public string number;
+        public string zip;
+    }
+
+        [Serializable]
+    public class GeoPortalFlaechenblattResponse
+    {
+        public bool error;
+        public GeoPortalFlaechenblattLiegenschaft Liegenschaft;
+
+        public GeoPortalLabelValue[] slopeAreas;
+        public int slopeAreaDifference;
+
+        public GeoPortalZoneArea[] zoneAreas;
+        public int zoneAreaDifference;
+
+        public GeoPortalAreal[] Areal;
+
+        public int coverAreaDifference;
+    }
+
+    [Serializable]
+    public class GeoPortalFlaechenblattLiegenschaft
+    {
+        public string parznr;
+        public string egrid;
+        public string gemeinde;
+        public string mutnr;
+        public string lokalname;
+        public string strasse;
+        public string flaeche;
+        public string plannr;
+        public string kanton;
+        public string eigentumsform;
+        public string eigform;
+        public string typ;
+        public string geom;
+    }
+
+    [Serializable]
+    public class GeoPortalLabelValue
+    {
+        public string label;
+        public int value;
+    }
+
+    [Serializable]
+    public class GeoPortalZoneArea
+    {
+        public string label;
+        public string shortLabel;
+        public int value;
+    }
+
+    [Serializable]
+    public class GeoPortalAreal
+    {
+        public string art;
+        public string egid;
+        public string asseknr;
+        public string flaeche;
+        public string typ;
+        public string artgroup;
+        public string adresse;
+        public string geom;
+    }
+
+
+    #endregion
 }
