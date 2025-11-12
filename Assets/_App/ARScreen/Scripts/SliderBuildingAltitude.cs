@@ -50,6 +50,6 @@ public class SliderBuildingAltitude : MonoBehaviour
     }
     void UpdateLabel(float a)
     {
-        if (valueText != null) valueText.text = a.ToString() + " m"; 
+        if (valueText != null) valueText.text = $"{a:+0.##;-0.##;+0.##} m";
     }
 }

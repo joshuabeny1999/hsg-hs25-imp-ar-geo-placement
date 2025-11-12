@@ -15,7 +15,6 @@ public class GeoObjectSpawner : MonoBehaviour
 {
     [Header("Common Object Settings")]
     [Tooltip("Object height in meters (cube Y scale or building extrusion).")]
-    [FormerlySerializedAs("cubeHeightMeters")]
     [Min(1f)]
     public float objectHeightMeters = 5f;
 
@@ -194,7 +193,7 @@ public class GeoObjectSpawner : MonoBehaviour
 
             _altitudeMeters = elevation;
 
-            TrySpawnBuildingGeometry(SelectedTargetContext.RawCoordinates, buildingName, _altitudeMeters, out _, clearExistingFactoryBuildings);
+            TrySpawnBuildingGeometry(SelectedTargetContext.RawCoordinates, SelectedTargetContext.Name, _altitudeMeters, out _, clearExistingFactoryBuildings);
             return;
         }
 
@@ -272,7 +271,7 @@ public class GeoObjectSpawner : MonoBehaviour
         }
 
         buildingGo = building.GameObject;
-        Debug.Log($"[GeoObjectSpawner] Building '{buildingNameToUse}' spawned at coordinates: {targetCoordinates} | Altitude: {altitude}m");
+        Debug.Log($"[GeoObjectSpawner] Building '{buildingNameToUse}' spawned at coordinates: {targetCoordinates} | Altitude: {altitude}m | Height {objectHeightMeters}m");
 
         if (placeBuildingsAtZeroOrigin)
         {
