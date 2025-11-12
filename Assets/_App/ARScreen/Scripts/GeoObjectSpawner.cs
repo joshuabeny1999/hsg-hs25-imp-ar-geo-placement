@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Shared.Scripts.Geo; 
 using Shared.Scripts.Building;
 using Shared.Scripts.App;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// Simple spawner that places a cube at a specific GPS location
@@ -12,24 +13,22 @@ using Shared.Scripts.App;
 /// </summary>
 public class GeoObjectSpawner : MonoBehaviour
 {
-    [Header("WPS Helper")]
-    [SerializeField] private ARWorldPositioningObjectHelper positioningHelper;
-    [SerializeField] private ARWorldPositioningManager wpsManager;
+    [Header("Common Object Settings")]
+    [Tooltip("Object height in meters (cube Y scale or building extrusion).")]
+    [FormerlySerializedAs("cubeHeightMeters")]
+    [Min(1f)]
+    public float objectHeightMeters = 5f;
 
-    [Header("Cube Settings")]
+    [Header("Cube-Only Settings")]
     [SerializeField] private bool createCube = false;
     [Tooltip("Size of the cube in meters (larger = more visible from distance)")]
     public float cubeSize = 5.0f;
-    [Tooltip("Cube height in meters (Y scale)")]
-    public float cubeHeightMeters = 5f;
     [SerializeField] private Material cubeMaterial;
 
 
     [Header("Building Geometry")]
-    [Tooltip("If provided, CreateBuilding will be used instead of a primitive cube.")]
+    [Tooltip("If true, CreateBuilding uses coordinates from the text field instead of SelectedTargetContext.")]
     [SerializeField] private bool useBuildingGeometryFromTextField = false;
-    
-
     //This needs to be filled in from the start, information provided by the scene before 
     [SerializeField, TextArea(4, 10)] private string buildingCoordinatesLv95;
     [SerializeField] private string buildingName = "Manual";
@@ -37,10 +36,14 @@ public class GeoObjectSpawner : MonoBehaviour
     private bool clearExistingFactoryBuildings = false;
     [SerializeField] private CreateBuilding buildingFactory;
 
+    [Header("WPS Helper")]
+    [SerializeField] private ARWorldPositioningObjectHelper positioningHelper;
+    [SerializeField] private ARWorldPositioningManager wpsManager;
+
     [Header("Debug")]
-    private bool debugSpawnAtProvidedCoordinates = false;
-    public double east = 2739782.97;
-    public double north = 1250944.04;
+    [SerializeField] private bool debugSpawnAtProvidedCoordinates = false;
+    [SerializeField] public double east = 2739782.97;
+    [SerializeField] public double north = 1250944.04;
     [SerializeField] private bool placeBuildingsAtZeroOrigin = false;
 
 
@@ -165,7 +168,7 @@ public class GeoObjectSpawner : MonoBehaviour
     {
         var go = new GameObject("Billboard");
         go.transform.SetParent(parent, false);
-        go.transform.localPosition = new Vector3(0, cubeHeightMeters + 0.5f, 0);
+        go.transform.localPosition = new Vector3(0, objectHeightMeters + 0.5f, 0);
 
         var tm = go.AddComponent<TextMesh>();
         tm.text = text;
@@ -215,7 +218,7 @@ public class GeoObjectSpawner : MonoBehaviour
         // Create cube
         var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
         cube.name = "GeoCube";
-        cube.transform.localScale = new Vector3(cubeSize, cubeHeightMeters, cubeSize);
+        cube.transform.localScale = new Vector3(cubeSize, objectHeightMeters, cubeSize);
 
         // Use linked material (with a safe instance)
         Material mat = cubeMaterial;
@@ -232,7 +235,7 @@ public class GeoObjectSpawner : MonoBehaviour
             // Position at GPS location
             positioningHelper.AddOrUpdateObject(cube, lat, lon, _altitudeMeters, Quaternion.identity);
 
-            Debug.Log($"[GeoObjectSpawner] Cube spawned at GPS: {lat}, {lon} | Altitude: {_altitudeMeters}m | Size: {cubeSize}m | Height: {cubeHeightMeters}m");
+            Debug.Log($"[GeoObjectSpawner] Cube spawned at GPS: {lat}, {lon} | Altitude: {_altitudeMeters}m | Size: {cubeSize}m | Height: {objectHeightMeters}m");
         }
 
         AddBillboardLabel(cube.transform);
@@ -259,6 +262,8 @@ public class GeoObjectSpawner : MonoBehaviour
 
         var buildingNameToUse = string.IsNullOrWhiteSpace(name) ? buildingName : name;
         float altitude = (float)(elevation > 0.0 ? elevation : _altitudeMeters);
+
+        buildingFactory.SetExtrusionHeight(objectHeightMeters);
 
         var building = buildingFactory.CreateBuildingFromCoordinates(targetCoordinates, buildingNameToUse, altitude, clearExisting);
         if (building == null || building.GameObject == null)
@@ -314,9 +319,9 @@ public class GeoObjectSpawner : MonoBehaviour
         }
     }
 
-    public void SetCubeHeightMeters(float h)
+    public void SetObjectHeightMeters(float h)
     {
-        cubeHeightMeters = Mathf.Max(1f, h);
+        objectHeightMeters = Mathf.Max(1f, h);
         if (_spawnedObject == null)
             return;
 
@@ -324,7 +329,7 @@ public class GeoObjectSpawner : MonoBehaviour
         {
             if (buildingFactory != null)
             {
-                buildingFactory.SetExtrusionHeight(cubeHeightMeters);
+                buildingFactory.SetExtrusionHeight(objectHeightMeters);
             }
 
             var toDestroy = _spawnedObject;
@@ -335,18 +340,18 @@ public class GeoObjectSpawner : MonoBehaviour
             }
 
             RespawnLastBuilding();
-            Debug.Log("[GeoObjectSpawner] Building height set to " + cubeHeightMeters + " meters.");
+            Debug.Log("[GeoObjectSpawner] Building height set to " + objectHeightMeters + " meters.");
             return;
         }
 
         var s = _spawnedObject.transform.localScale;
-        s.y = cubeHeightMeters;
+        s.y = objectHeightMeters;
         _spawnedObject.transform.localScale = s;
 
-        Debug.Log("[GeoObjectSpawner] Cube height set to " + cubeHeightMeters + " meters.");
+        Debug.Log("[GeoObjectSpawner] Cube height set to " + objectHeightMeters + " meters.");
 
         var bb = _spawnedObject.transform.Find("Billboard");
-        if (bb != null) bb.localPosition = new Vector3(0f, cubeHeightMeters + 0.5f, 0f);
+        if (bb != null) bb.localPosition = new Vector3(0f, objectHeightMeters + 0.5f, 0f);
     }
 
     /// <summary>

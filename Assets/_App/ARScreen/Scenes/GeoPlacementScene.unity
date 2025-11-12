@@ -638,10 +638,10 @@ RectTransform:
   - {fileID: 818525656}
   m_Father: {fileID: 1886635568}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
+  m_AnchorMin: {x: 0.021367522, y: 0.05015798}
+  m_AnchorMax: {x: 0.97863245, y: 0.9344392}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -50, y: -50}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &216640246
 MonoBehaviour:
@@ -3715,11 +3715,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36d312637ba0be0468349169bdafe4b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  positioningHelper: {fileID: 783262639}
-  wpsManager: {fileID: 783262638}
+  objectHeightMeters: 3
   createCube: 0
   cubeSize: 5
-  cubeHeightMeters: 5
   cubeMaterial: {fileID: 2100000, guid: 117b875761173479c81e54a847f2cc4d, type: 2}
   useBuildingGeometryFromTextField: 0
   buildingCoordinatesLv95: '2739913.487,1251050.088 2739913.773,1251050.294 2739914.064,1251050.493
@@ -3745,6 +3743,9 @@ MonoBehaviour:
   buildingName: Manual
   clearExistingFactoryBuildings: 0
   buildingFactory: {fileID: 1070883117}
+  positioningHelper: {fileID: 783262639}
+  wpsManager: {fileID: 783262638}
+  debugSpawnAtProvidedCoordinates: 0
   east: 2742967.37
   north: 1252781.79
   placeBuildingsAtZeroOrigin: 0
@@ -3846,7 +3847,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 14.1
+  m_fontSize: 14.15
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -6205,7 +6206,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 26.7
+  m_fontSize: 24.7
   m_fontSizeBase: 48
   m_fontWeight: 400
   m_enableAutoSizing: 1
