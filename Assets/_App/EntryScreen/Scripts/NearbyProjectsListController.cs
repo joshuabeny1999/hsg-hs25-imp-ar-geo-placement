@@ -22,8 +22,9 @@ public class NearbyProjectsListController : MonoBehaviour
     [SerializeField] private BuildingListItemView itemPrefab;   // Your row prefab
 
     [Header("Status Labels")]
-    [SerializeField] private TMP_Text loadingText;            
-    [SerializeField] private TMP_Text noProjectsText;         
+    [SerializeField] private TMP_Text loadingText;
+    [SerializeField] private TMP_Text noProjectsText;
+    [SerializeField] private RectTransform noPermissionsPanel;
 
     [Header("Options")]
     [SerializeField] private bool autoFetchOnStart = true;
@@ -36,6 +37,12 @@ public class NearbyProjectsListController : MonoBehaviour
     private bool _locationReady = false;
     private double _userLat = double.NaN;
     private double _userLon = double.NaN;
+    private bool _locationPermissionGranted = true;
+    private bool _cameraPermissionGranted = true;
+    
+#if UNITY_ANDROID && !UNITY_EDITOR
+    private bool _permissionRequestCompleted = false;
+#endif
 
     private struct BuildingWithDistance
     {
@@ -51,12 +58,12 @@ public class NearbyProjectsListController : MonoBehaviour
         if (distanceDropdown) distanceDropdown.onValueChanged.AddListener(OnDistanceDropDownClicked);
         if (wfs) wfs.ProjectedFeaturesFetched += OnFeaturesFetched;
         ShowState(loading: false, hasData: false);
+        if (noPermissionsPanel) noPermissionsPanel.gameObject.SetActive(false);
     }
 
     void Start()
     {
-        StartCoroutine(InitLocation());
-        if (autoFetchOnStart) OnRefreshClicked();
+        StartCoroutine(EnsurePermissionsAndInit());
     }
 
     void OnDestroy()
@@ -173,6 +180,93 @@ public class NearbyProjectsListController : MonoBehaviour
         if (listContent) listContent.transform.parent.gameObject.SetActive(hasData);
     }
 
+    private IEnumerator EnsurePermissionsAndInit()
+    {
+        _locationPermissionGranted = false;
+        _cameraPermissionGranted = false;
+
+        yield return EnsureRuntimePermissions();
+
+        if (!_locationPermissionGranted || !_cameraPermissionGranted)
+        {
+            OnPermissionsDenied();
+            yield break;
+        }
+
+        if (noPermissionsPanel) noPermissionsPanel.gameObject.SetActive(false);
+
+        yield return InitLocation();
+
+        if (autoFetchOnStart) OnRefreshClicked();
+    }
+
+    private IEnumerator EnsureRuntimePermissions()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        List<string> missing = new();
+        if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.FineLocation))
+            missing.Add(UnityEngine.Android.Permission.FineLocation);
+        if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.CoarseLocation))
+            missing.Add(UnityEngine.Android.Permission.CoarseLocation);
+        if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Camera))
+            missing.Add(UnityEngine.Android.Permission.Camera);
+
+        if (missing.Count > 0)
+        {
+            _permissionRequestCompleted = false;
+            int responsesPending = missing.Count;
+
+            var callbacks = new UnityEngine.Android.PermissionCallbacks();
+            callbacks.PermissionGranted += permission =>
+            {
+                if (permission == UnityEngine.Android.Permission.Camera)
+                    _cameraPermissionGranted = true;
+                responsesPending--;
+                if (responsesPending <= 0) _permissionRequestCompleted = true;
+            };
+            callbacks.PermissionDenied += permission =>
+            {
+                if (permission == UnityEngine.Android.Permission.Camera)
+                    _cameraPermissionGranted = false;
+                responsesPending--;
+                if (responsesPending <= 0) _permissionRequestCompleted = true;
+            };
+            callbacks.PermissionDeniedAndDontAskAgain += permission =>
+            {
+                if (permission == UnityEngine.Android.Permission.Camera)
+                    _cameraPermissionGranted = false;
+                responsesPending--;
+                if (responsesPending <= 0) _permissionRequestCompleted = true;
+            };
+
+            UnityEngine.Android.Permission.RequestUserPermissions(missing.ToArray(), callbacks);
+
+            while (!_permissionRequestCompleted)
+            {
+                yield return null;
+            }
+        }
+
+        _locationPermissionGranted = UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.FineLocation) ||
+                                     UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.CoarseLocation);
+        _cameraPermissionGranted = UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Camera);
+#elif UNITY_IOS && !UNITY_EDITOR
+        if (!Application.HasUserAuthorization(UserAuthorization.Location))
+            yield return Application.RequestUserAuthorization(UserAuthorization.Location);
+
+        _locationPermissionGranted = Application.HasUserAuthorization(UserAuthorization.Location);
+
+        if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
+            yield return Application.RequestUserAuthorization(UserAuthorization.WebCam);
+
+        _cameraPermissionGranted = Application.HasUserAuthorization(UserAuthorization.WebCam);
+#else
+        _locationPermissionGranted = true;
+        _cameraPermissionGranted = true;
+#endif
+    yield break;
+    }
+
     private IEnumerator InitLocation()
     {
         if (!Input.location.isEnabledByUser)
@@ -198,6 +292,11 @@ public class NearbyProjectsListController : MonoBehaviour
         }
     }
 
+    private void OnPermissionsDenied()
+    {
+        if (noPermissionsPanel) noPermissionsPanel.gameObject.SetActive(true);
+    }
+
     // --- Button actions ---
 
     private void OnOpenGeoPortal(ProjectedBuilding b)
@@ -208,6 +307,25 @@ public class NearbyProjectsListController : MonoBehaviour
     }
 
     private void OnOpenAR(ProjectedBuilding b)
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Camera))
+        {
+            UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.Camera);
+            Debug.Log("Camera permission requested; please retry once granted.");
+            return;
+        }
+#elif UNITY_IOS && !UNITY_EDITOR
+        if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
+        {
+            StartCoroutine(RequestIosCameraAndOpenAR(b));
+            return;
+        }
+#endif
+        LaunchArScene(b);
+    }
+
+    private void LaunchArScene(ProjectedBuilding b)
     {
         double lat = 0, lon = 0;
         ProjNetTransformCH.LV95ToWGS84(b.EastCentroid, b.NorthCentroid, out lat, out lon);
@@ -221,4 +339,19 @@ public class NearbyProjectsListController : MonoBehaviour
         Debug.Log("Opening AR scene for building EGID: " + b.Egid);
         SceneManager.LoadScene(arSceneName);
     }
+
+#if UNITY_IOS && !UNITY_EDITOR
+    private IEnumerator RequestIosCameraAndOpenAR(ProjectedBuilding building)
+    {
+        yield return Application.RequestUserAuthorization(UserAuthorization.WebCam);
+
+        if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
+        {
+            Debug.LogWarning("Camera access denied by user.");
+            yield break;
+        }
+
+        LaunchArScene(building);
+    }
+#endif
 }
