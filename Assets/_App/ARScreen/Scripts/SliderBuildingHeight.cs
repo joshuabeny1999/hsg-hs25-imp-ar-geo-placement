@@ -14,10 +14,10 @@ public class UIHeightSlider : MonoBehaviour
         if (spawner != null && slider != null)
         {
             // sinnvolle Defaults
-            if (slider.minValue == 0f) slider.minValue = 0f;
-            if (slider.maxValue < 20f) slider.maxValue = 20f;
+            if (slider.minValue < 0.5f) slider.minValue = 0.5f;
+            if (slider.maxValue < 30f) slider.maxValue = 30f;
 
-            slider.value = spawner.cubeHeightMeters;
+            slider.value = spawner.objectHeightMeters;
             slider.onValueChanged.AddListener(OnHeightChanged);
             UpdateLabel(slider.value);
         }
@@ -27,7 +27,7 @@ public class UIHeightSlider : MonoBehaviour
     {
         if (spawner != null)
         {
-            spawner.SetCubeHeightMeters(h);
+            spawner.SetObjectHeightMeters(h);
             UpdateLabel(h);
         }
     }
