@@ -250,17 +250,9 @@ public class NearbyProjectsListController : MonoBehaviour
         _locationPermissionGranted = UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.FineLocation) ||
                                      UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.CoarseLocation);
         _cameraPermissionGranted = UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Camera);
-#elif UNITY_IOS && !UNITY_EDITOR
-        if (!Application.HasUserAuthorization(UserAuthorization.Location))
-            yield return Application.RequestUserAuthorization(UserAuthorization.Location);
-
-        _locationPermissionGranted = Application.HasUserAuthorization(UserAuthorization.Location);
-
-        if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
-            yield return Application.RequestUserAuthorization(UserAuthorization.WebCam);
-
-        _cameraPermissionGranted = Application.HasUserAuthorization(UserAuthorization.WebCam);
 #else
+        // On iOS, permission granting works already and it ask for permissions on demand.
+
         _locationPermissionGranted = true;
         _cameraPermissionGranted = true;
 #endif
@@ -315,12 +307,6 @@ public class NearbyProjectsListController : MonoBehaviour
             Debug.Log("Camera permission requested; please retry once granted.");
             return;
         }
-#elif UNITY_IOS && !UNITY_EDITOR
-        if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
-        {
-            StartCoroutine(RequestIosCameraAndOpenAR(b));
-            return;
-        }
 #endif
         LaunchArScene(b);
     }
@@ -340,18 +326,4 @@ public class NearbyProjectsListController : MonoBehaviour
         SceneManager.LoadScene(arSceneName);
     }
 
-#if UNITY_IOS && !UNITY_EDITOR
-    private IEnumerator RequestIosCameraAndOpenAR(ProjectedBuilding building)
-    {
-        yield return Application.RequestUserAuthorization(UserAuthorization.WebCam);
-
-        if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
-        {
-            Debug.LogWarning("Camera access denied by user.");
-            yield break;
-        }
-
-        LaunchArScene(building);
-    }
-#endif
 }

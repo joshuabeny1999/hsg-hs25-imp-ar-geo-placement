@@ -4,7 +4,7 @@
     "com.nianticlabs.lightship": "https://github.com/niantic-lightship/ardk-upm.git",
     "com.starasgames.tmpro-dynamic-data-cleaner": "https://github.com/STARasGAMES/tmpro-dynamic-data-cleaner.git#upm",
     "com.unity.2d.sprite": "1.0.0",
-    "com.unity.collab-proxy": "2.9.3",
+    "com.unity.collab-proxy": "2.10.0",
     "com.unity.feature.development": "1.0.2",
     "com.unity.inputsystem": "1.14.2",
     "com.unity.timeline": "1.8.9",
