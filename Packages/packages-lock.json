@@ -38,7 +38,7 @@
       "dependencies": {}
     },
     "com.unity.burst": {
-      "version": "1.8.24",
+      "version": "1.8.25",
       "depth": 1,
       "source": "registry",
       "dependencies": {
@@ -76,7 +76,7 @@
         "com.unity.ide.rider": "3.0.38",
         "com.unity.editorcoroutines": "1.0.0",
         "com.unity.performance.profile-analyzer": "1.2.3",
-        "com.unity.test-framework": "1.5.1",
+        "com.unity.test-framework": "1.6.0",
         "com.unity.testtools.codecoverage": "1.2.6"
       }
     },
@@ -143,7 +143,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.test-framework": {
-      "version": "1.5.1",
+      "version": "1.6.0",
       "depth": 1,
       "source": "builtin",
       "dependencies": {
@@ -256,11 +256,10 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.management": {
-      "version": "4.5.1",
+      "version": "4.5.3",
       "depth": 1,
       "source": "registry",
       "dependencies": {
-        "com.unity.modules.vr": "1.0.0",
         "com.unity.modules.xr": "1.0.0",
         "com.unity.xr.core-utils": "2.2.1",
         "com.unity.modules.subsystems": "1.0.0",
@@ -269,7 +268,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.openxr": {
-      "version": "1.15.1",
+      "version": "1.16.0",
       "depth": 1,
       "source": "registry",
       "dependencies": {
