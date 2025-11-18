@@ -303,6 +303,8 @@ public class GeoObjectSpawner : MonoBehaviour
         _lastBuildingName = buildingNameToUse;
         _lastClearExisting = clearExisting;
 
+        VibrationService.TriggerLoadVibration(1000);
+
         return true;
     }
 
