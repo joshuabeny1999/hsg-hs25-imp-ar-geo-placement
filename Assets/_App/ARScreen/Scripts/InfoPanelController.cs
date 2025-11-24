@@ -65,23 +65,23 @@ public class InfoPanelController : MonoBehaviour
         AddTitle("Allgemein");
 
         // rows
-        AddRow("Name", Safe(SelectedTargetContext.Name));
-        AddRow("EGID", Safe(SelectedTargetContext.Egid));
-        AddRow("Latitude", SelectedTargetContext.Latitude.ToString("F6", CultureInfo.InvariantCulture));
-        AddRow("Longitude", SelectedTargetContext.Longitude.ToString("F6", CultureInfo.InvariantCulture));
+        AddRow("Name", Safe(CurrentSelectedProjection.Building.Name));
+        AddRow("EGID", Safe(CurrentSelectedProjection.Building.Egid));
+        AddRow("Latitude", CurrentSelectedProjection.Building.Latitude.ToString("F6", CultureInfo.InvariantCulture));
+        AddRow("Longitude", CurrentSelectedProjection.Building.Longitude.ToString("F6", CultureInfo.InvariantCulture));
 
         // LV95 aus Polygoncentroid oder WGS84 ableiten
         double east = 0, north = 0;
         bool haveEN = false;
 
-        if (!string.IsNullOrWhiteSpace(SelectedTargetContext.RawCoordinates) &&
-            BuildingGeometryUtils.TryCentroidLV95(SelectedTargetContext.RawCoordinates, out var eC, out var nC))
+        if (!string.IsNullOrWhiteSpace(CurrentSelectedProjection.Building.RawCoordinates) &&
+            BuildingGeometryUtils.TryCentroidLV95(CurrentSelectedProjection.Building.RawCoordinates, out var eC, out var nC))
         {
             east = eC; north = nC; haveEN = true;
         }
-        else if (SelectedTargetContext.Latitude != 0 || SelectedTargetContext.Longitude != 0)
+        else if (CurrentSelectedProjection.Building.Latitude != 0 || CurrentSelectedProjection.Building.Longitude != 0)
         {
-            ProjNetTransformCH.WGS84ToLV95(SelectedTargetContext.Latitude, SelectedTargetContext.Longitude, out east, out north);
+            ProjNetTransformCH.WGS84ToLV95(CurrentSelectedProjection.Building.Latitude, CurrentSelectedProjection.Building.Longitude, out east, out north);
             haveEN = true;
         }
 
@@ -93,8 +93,8 @@ public class InfoPanelController : MonoBehaviour
             AddRow("North (LV95)", north.ToString("F2", CultureInfo.InvariantCulture));
         }
 
-        if (SelectedTargetContext.ElevationMeters.HasValue)
-            AddRow("Geländehöhe (m.ü.M.)", SelectedTargetContext.ElevationMeters.Value.ToString("F2", CultureInfo.InvariantCulture));
+        if (CurrentSelectedProjection.Building.ElevationMeters.HasValue)
+            AddRow("Geländehöhe (m.ü.M.)", CurrentSelectedProjection.Building.ElevationMeters.Value.ToString("F2", CultureInfo.InvariantCulture));
 
         // -------- 2) Stammdaten (liefert BFS/LiegNr/EGRID für Flächenblatt)
         GeoPortalStammdatenResponse stammdaten = null;

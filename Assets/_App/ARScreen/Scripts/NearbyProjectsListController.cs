@@ -5,14 +5,17 @@ using Shared.Scripts.Building;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using TMPro;                       // ← add
+using TMPro;
 using Shared.Scripts.Geo;
 using Shared.Scripts.App;
 
 public class NearbyProjectsListController : MonoBehaviour
 {
     [Header("GeoInfo API")]
-    [SerializeField] private GeoInfoWFSAPI wfs;   // Drag your GeoInfoWFSAPI here
+    [SerializeField] private GeoInfoWFSAPI wfs;   
+
+    [Header("GeoObject Spawner")]
+    [SerializeField] private GeoObjectSpawner geoObjectSpawner;
 
     [Header("UI")]
     [SerializeField] private Button refreshButton;
@@ -44,6 +47,8 @@ public class NearbyProjectsListController : MonoBehaviour
     private bool _permissionRequestCompleted = false;
 #endif
 
+    private Coroutine _spawnWhenReadyRoutine;
+
     private struct BuildingWithDistance
     {
         public ProjectedBuilding B;
@@ -71,6 +76,8 @@ public class NearbyProjectsListController : MonoBehaviour
         if (wfs) wfs.ProjectedFeaturesFetched -= OnFeaturesFetched;
         if (refreshButton) refreshButton.onClick.RemoveListener(OnRefreshClicked);
         if (distanceDropdown) distanceDropdown.onValueChanged.RemoveListener(OnDistanceDropDownClicked);
+        if (_spawnWhenReadyRoutine != null)
+            StopCoroutine(_spawnWhenReadyRoutine);
     }
 
     void OnDistanceDropDownClicked(int index)
@@ -161,7 +168,7 @@ public class NearbyProjectsListController : MonoBehaviour
                 _pool.Add(view);
             }
 
-            view.Bind(enriched[i].B, i + 1, enriched[i].DistanceMeters, OnOpenGeoPortal, OnOpenAR);
+            view.Bind(enriched[i].B, i + 1, enriched[i].DistanceMeters, OnOpenGeoPortal, OnOpenInformation);
         }
 
         for (; i < _pool.Count; i++)
@@ -169,6 +176,38 @@ public class NearbyProjectsListController : MonoBehaviour
 
         bool hasData = _current.Count > 0;
         ShowState(loading:false, hasData:hasData);
+
+        // Convert enriched List<BuildingWithDistance> to List<SelectedTargetContext>
+        List<SelectedTargetContext> enrichedContexts = new List<SelectedTargetContext>();
+        foreach (var item in enriched)
+        {
+            var context = new SelectedTargetContext
+            {
+                Egid = item.B.Egid,
+                Name = item.B.GebHauptNutzung,
+                RawCoordinates = item.B.Coordinates,
+                ElevationMeters = item.B.ElevationMeters,
+                Latitude = item.Lat,
+                Longitude = item.Lon
+            };
+            enrichedContexts.Add(context);
+        }
+
+        if (!geoObjectSpawner)
+            return;
+
+        var contextsCopy = new List<SelectedTargetContext>(enrichedContexts);
+        if (geoObjectSpawner.IsReady)
+        {
+            geoObjectSpawner.CreateARProjections(contextsCopy);
+        }
+        else
+        {
+            if (_spawnWhenReadyRoutine != null)
+                StopCoroutine(_spawnWhenReadyRoutine);
+            _spawnWhenReadyRoutine = StartCoroutine(SpawnWhenSpawnerReady(contextsCopy));
+        }
+
     }
 
     private void ShowState(bool loading, bool hasData)
@@ -298,32 +337,49 @@ public class NearbyProjectsListController : MonoBehaviour
         Application.OpenURL(url);
     }
 
-    private void OnOpenAR(ProjectedBuilding b)
-    {
-#if UNITY_ANDROID && !UNITY_EDITOR
-        if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Camera))
-        {
-            UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.Camera);
-            Debug.Log("Camera permission requested; please retry once granted.");
-            return;
-        }
-#endif
-        LaunchArScene(b);
-    }
-
-    private void LaunchArScene(ProjectedBuilding b)
+    private void OnOpenInformation(ProjectedBuilding b)
     {
         double lat = 0, lon = 0;
         ProjNetTransformCH.LV95ToWGS84(b.EastCentroid, b.NorthCentroid, out lat, out lon);
+        
+        // Set the SelectedTargetContext for the building
+        SelectedTargetContext context = new SelectedTargetContext
+        {
+            Egid = b.Egid,
+            Name = b.GebHauptNutzung,
+            RawCoordinates = b.Coordinates,
+            ElevationMeters = b.ElevationMeters,
+            Latitude = lat,
+            Longitude = lon
+        };
+        CurrentSelectedProjection.Building = context;
+    }
 
-        SelectedTargetContext.Egid = b.Egid;
-        SelectedTargetContext.Name = b.GebHauptNutzung;
-        SelectedTargetContext.RawCoordinates = b.Coordinates;
-        SelectedTargetContext.ElevationMeters = b.ElevationMeters;
-        SelectedTargetContext.Latitude = lat; SelectedTargetContext.Longitude = lon;
+    private IEnumerator SpawnWhenSpawnerReady(List<SelectedTargetContext> contexts)
+    {
+        float elapsed = 0f;
+        float maxWait = 45f; // max 45 seconds to wait for WPS
+        
+        while (geoObjectSpawner && !geoObjectSpawner.IsReady && elapsed < maxWait)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
 
-        Debug.Log("Opening AR scene for building EGID: " + b.Egid);
-        SceneManager.LoadScene(arSceneName);
+        if (geoObjectSpawner)
+        {
+            if (geoObjectSpawner.IsReady)
+            {
+                Debug.Log($"[NearbyProjectsListController] Spawner ready after {elapsed:F1}s, spawning {contexts.Count} buildings");
+                geoObjectSpawner.CreateARProjections(contexts);
+            }
+            else
+            {
+                Debug.LogWarning($"[NearbyProjectsListController] Spawner not ready after {maxWait}s timeout. WPS available: {geoObjectSpawner.IsWpsReady}. Buildings will NOT spawn to avoid black screen.");
+            }
+        }
+
+        _spawnWhenReadyRoutine = null;
     }
 
 }

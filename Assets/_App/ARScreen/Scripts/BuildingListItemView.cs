@@ -10,7 +10,7 @@ using UnityEngine.UI;
         [SerializeField] private TextMeshProUGUI subtitle;
         [SerializeField] private TextMeshProUGUI distanceText;
         [SerializeField] private Button openGeoPortalButton;
-        [SerializeField] private Button openARButton;
+        [SerializeField] private Button openInformationButton;
 
         private ProjectedBuilding _data;
 
@@ -19,7 +19,7 @@ using UnityEngine.UI;
             int index,
             double distanceMeters,
             System.Action<ProjectedBuilding> onOpenGeoPortal,
-            System.Action<ProjectedBuilding> onOpenAR)
+            System.Action<ProjectedBuilding> onOpenInformation)
         {
             Debug.Log("Called with data: " + (data != null ? data.Egid : "null" ) + ", index: " + index);
             _data = data;
@@ -50,7 +50,7 @@ using UnityEngine.UI;
 
             // Placeholder thumbnail (leave empty if you like)
             if (thumbnail) thumbnail.texture = null;
-            ThumbnailService.Instance?.RequestThumbnail(_data, 250, tex => {
+            ThumbnailService.Instance?.RequestThumbnail(_data, 200, tex => {
                 if (!this || _data != data || !thumbnail || !tex) return;
 
                 thumbnail.texture = tex;
@@ -67,10 +67,11 @@ using UnityEngine.UI;
                 openGeoPortalButton.onClick.RemoveAllListeners();
                 openGeoPortalButton.onClick.AddListener(() => onOpenGeoPortal?.Invoke(_data));
             }
-            if (openARButton)
+
+            if(openInformationButton)
             {
-                openARButton.onClick.RemoveAllListeners();
-                openARButton.onClick.AddListener(() => onOpenAR?.Invoke(_data));
+                openInformationButton.onClick.RemoveAllListeners();
+                openInformationButton.onClick.AddListener(() => onOpenInformation?.Invoke(_data));
             }
         }
 

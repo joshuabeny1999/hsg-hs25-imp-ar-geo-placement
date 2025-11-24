@@ -39,11 +39,11 @@ public class ArrowToTarget : MonoBehaviour
 
         // 1) Preferred: target from SelectedTargetContext (lat/lon)
         double targetLat = 0, targetLon = 0;
-        bool hasContextTarget = SelectedTargetContext.Latitude != 0 || SelectedTargetContext.Longitude != 0;
+        bool hasContextTarget = CurrentSelectedProjection.Building.Latitude != 0 || CurrentSelectedProjection.Building.Longitude != 0;
         if (hasContextTarget)
         {
-            targetLat = SelectedTargetContext.Latitude;
-            targetLon = SelectedTargetContext.Longitude;
+            targetLat = CurrentSelectedProjection.Building.Latitude;
+            targetLon = CurrentSelectedProjection.Building.Longitude;
         }
         else if (geoSpawner != null)
         {

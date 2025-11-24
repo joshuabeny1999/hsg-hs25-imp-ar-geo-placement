@@ -31,8 +31,6 @@ public class GeoObjectSpawner : MonoBehaviour
     //This needs to be filled in from the start, information provided by the scene before 
     [SerializeField, TextArea(4, 10)] private string buildingCoordinatesLv95;
     [SerializeField] private string buildingName = "Manual";
-    [SerializeField, Tooltip("Clear existing factory-spawned buildings before creating a new one.")]
-    private bool clearExistingFactoryBuildings = false;
     [SerializeField] private CreateBuilding buildingFactory;
 
     [Header("WPS Helper")]
@@ -58,8 +56,18 @@ public class GeoObjectSpawner : MonoBehaviour
     private string _lastBuildingName;
     private bool _lastClearExisting;
 
+    private bool _wpsReady;
+    private bool _altitudeReady;
+    private bool _initializing;
+    private Coroutine _initializationRoutine;
+    private List<SelectedTargetContext> _pendingContexts;
+
     // Public property to expose altitude for debug display
     public double AltitudeMeters => _altitudeMeters;
+    public bool IsWpsReady => _wpsReady;
+    
+    // Ready once altitude is fetched AND WPS is available (buildings need WPS to be positioned correctly)
+    public bool IsReady => _altitudeReady && _wpsReady;
 
 
     private void Awake()
@@ -84,45 +92,89 @@ public class GeoObjectSpawner : MonoBehaviour
 
         if (buildingFactory == null)
             buildingFactory = FindFirstObjectByType<CreateBuilding>();
+
+        EnsureInitializationRoutine();
     }
 
-    private void Start()
+    private void EnsureInitializationRoutine()
     {
+        if (_initializationRoutine == null)
+            _initializationRoutine = StartCoroutine(InitializeSpatialDependencies());
+    }
+
+    public void CreateARProjections(List<SelectedTargetContext> enriched = null)
+    {
+        if (enriched != null)
+            _pendingContexts = new List<SelectedTargetContext>(enriched);
+
         if (debugSpawnAtProvidedCoordinates)
         {
             Debug.Log("[GeoObjectSpawner] Debug spawn mode enabled; placing objects at world origin.");
             _altitudeMeters = 0.0;
-            SpawnGeoObject();
+            SpawnGeoObject(_pendingContexts);
+            _pendingContexts = null;
+            return;
         }
-        else
+
+        if (!IsReady)
         {
-            StartCoroutine(WaitForWpsThenFetchAltitude());
+            Debug.Log("[GeoObjectSpawner] Not ready yet; queued projections until spatial services initialize.");
+            EnsureInitializationRoutine();
+            return;
         }
+
+        bool hasPending = _pendingContexts != null && _pendingContexts.Count > 0;
+        if (!hasPending && !useBuildingGeometryFromTextField && !createCube)
+            return;
+
+        SpawnGeoObject(_pendingContexts);
+        _pendingContexts = null;
     }
     
     // <summary>
     /// Waits for WPS to become available (if applicable) before fetching altitude
     ///  </summary>
-    private IEnumerator WaitForWpsThenFetchAltitude()
+    private IEnumerator InitializeSpatialDependencies()
     {
-        if (debugSpawnAtProvidedCoordinates)
+        if (_initializing)
             yield break;
 
-        // If the manager exists, wait until WPS reports it’s available (with a short timeout)
+        _initializing = true;
+
         if (wpsManager != null)
         {
-            float t = 0f, timeout = 10f;
+            float t = 0f, timeout = 30f; // increased timeout to 30s
+            Debug.Log("[GeoObjectSpawner] Waiting for WPS to become available...");
             while (!wpsManager.IsAvailable && t < timeout)
             {
                 t += Time.deltaTime;
+                if ((int)t % 5 == 0 && t > 0) // log every 5 seconds
+                    Debug.Log($"[GeoObjectSpawner] Still waiting for WPS... ({t:F0}s / {timeout}s)");
                 yield return null;
             }
-            Debug.Log($"WPS available: {wpsManager.IsAvailable}");
+
+            _wpsReady = wpsManager.IsAvailable;
+            Debug.Log($"[GeoObjectSpawner] WPS available: {_wpsReady}");
+
+            if (!_wpsReady)
+                Debug.LogError("[GeoObjectSpawner] WPS not ready after timeout. Buildings cannot be positioned in AR. Check: 1) Lightship API key, 2) GPS enabled, 3) ARWorldPositioningManager in scene.");
+        }
+        else
+        {
+            _wpsReady = true;
         }
 
         yield return StartCoroutine(FetchAltitudeFromDevice());
+        _altitudeReady = true;
 
-        SpawnGeoObject();
+        _initializing = false;
+        _initializationRoutine = null;
+
+        if (IsReady && _pendingContexts != null && _pendingContexts.Count > 0)
+        {
+            SpawnGeoObject(_pendingContexts);
+            _pendingContexts = null;
+        }
     }
 
     /// <summary>
@@ -177,24 +229,30 @@ public class GeoObjectSpawner : MonoBehaviour
         tm.color = Color.cyan;
     }
 
-    private void SpawnGeoObject()
+    private void SpawnGeoObject(List<SelectedTargetContext> enriched = null)
     {
         if (useBuildingGeometryFromTextField)
         {
-            TrySpawnBuildingGeometry(buildingCoordinatesLv95, buildingName, _altitudeMeters, out _, clearExistingFactoryBuildings);
+            TrySpawnBuildingGeometry(buildingCoordinatesLv95, buildingName, _altitudeMeters, out _);
             return;
         }
 
-        if (!useBuildingGeometryFromTextField && !createCube)
+        if (!useBuildingGeometryFromTextField && !createCube && enriched != null)
         {
-            double elevation = (SelectedTargetContext.ElevationMeters.HasValue && SelectedTargetContext.ElevationMeters.Value > 0.0)
-                ? SelectedTargetContext.ElevationMeters.Value
+            // Needs to fetch the data from the request instead of the SelectedTargetContext. 
+
+            foreach(SelectedTargetContext projection in enriched)
+            {
+                
+                double elevation = (projection.ElevationMeters.HasValue && projection.ElevationMeters.Value > 0.0)
+                ? projection.ElevationMeters.Value
                 : _altitudeMeters;
 
             _altitudeMeters = elevation;
 
-            TrySpawnBuildingGeometry(SelectedTargetContext.RawCoordinates, SelectedTargetContext.Name, _altitudeMeters, out _, clearExistingFactoryBuildings);
-            return;
+            TrySpawnBuildingGeometry(projection.RawCoordinates, projection.Name, _altitudeMeters, out _);
+            }
+            
         }
 
         if (createCube)
@@ -243,7 +301,7 @@ public class GeoObjectSpawner : MonoBehaviour
     }
 
 
-    public bool TrySpawnBuildingGeometry(string coordinatesLv95, string name, double elevation, out GameObject buildingGo, bool clearExisting = false)
+    public bool TrySpawnBuildingGeometry(string coordinatesLv95, string name, double elevation, out GameObject buildingGo)
     {
         buildingGo = null;
 
@@ -264,7 +322,7 @@ public class GeoObjectSpawner : MonoBehaviour
 
         buildingFactory.SetExtrusionHeight(objectHeightMeters);
 
-        var building = buildingFactory.CreateBuildingFromCoordinates(targetCoordinates, buildingNameToUse, altitude, clearExisting);
+        var building = buildingFactory.CreateBuildingFromCoordinates(targetCoordinates, buildingNameToUse, altitude);
         if (building == null || building.GameObject == null)
         {
             return false;
@@ -287,12 +345,25 @@ public class GeoObjectSpawner : MonoBehaviour
         }
         else if (positioningHelper != null)
         {
+            // CRITICAL: Only position if WPS is actually ready, otherwise building stays at origin (black screen)
+            if (!_wpsReady)
+            {
+                Debug.LogWarning($"[GeoObjectSpawner] WPS not ready! Destroying building '{buildingNameToUse}' to prevent black screen.");
+                Destroy(buildingGo);
+                return false;
+            }
+            
+            Debug.Log($"[GeoObjectSpawner] Positioning building '{buildingNameToUse}' at GPS: {building.Latitude:F6}, {building.Longitude:F6}, alt={building.AltitudeMeters}m");
             positioningHelper.AddOrUpdateObject(
                 buildingGo,
                 building.Latitude,
                 building.Longitude,
                 building.AltitudeMeters,
                 Quaternion.identity);
+        }
+        else
+        {
+            Debug.LogWarning($"[GeoObjectSpawner] No positioningHelper! Building '{buildingNameToUse}' stuck at factory origin.");
         }
 
         _spawnedObject = buildingGo;
@@ -301,7 +372,6 @@ public class GeoObjectSpawner : MonoBehaviour
         _lastBuildingCoordinates = targetCoordinates;
         _lastBuildingElevation = altitude;
         _lastBuildingName = buildingNameToUse;
-        _lastClearExisting = clearExisting;
 
         VibrationService.TriggerLoadVibration(1000);
 
@@ -313,7 +383,7 @@ public class GeoObjectSpawner : MonoBehaviour
         if (string.IsNullOrWhiteSpace(_lastBuildingCoordinates))
             return;
 
-        if (!TrySpawnBuildingGeometry(_lastBuildingCoordinates, _lastBuildingName, _altitudeMeters, out _, _lastClearExisting))
+        if (!TrySpawnBuildingGeometry(_lastBuildingCoordinates, _lastBuildingName, _altitudeMeters, out _))
         {
             _spawnedObject = null;
             _spawnedIsBuilding = false;
