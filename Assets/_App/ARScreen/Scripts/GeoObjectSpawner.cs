@@ -104,9 +104,20 @@ public class GeoObjectSpawner : MonoBehaviour
 
     public void CreateARProjections(List<SelectedTargetContext> enriched = null)
     {
+        Debug.Log($"[GeoObjectSpawner] CreateARProjections called. IsReady={IsReady}, WpsReady={_wpsReady}, AltReady={_altitudeReady}, debugSpawn={debugSpawnAtProvidedCoordinates}");
+        
         if (enriched != null)
             _pendingContexts = new List<SelectedTargetContext>(enriched);
 
+        // CRITICAL: Check IsReady FIRST, before any debug modes
+        if (!IsReady)
+        {
+            Debug.Log($"[GeoObjectSpawner] NOT READY - queuing {_pendingContexts?.Count ?? 0} projections. Waiting for WPS and altitude.");
+            EnsureInitializationRoutine();
+            return;
+        }
+
+        // Only allow debug spawn if explicitly enabled AND we're ready
         if (debugSpawnAtProvidedCoordinates)
         {
             Debug.Log("[GeoObjectSpawner] Debug spawn mode enabled; placing objects at world origin.");
@@ -116,17 +127,11 @@ public class GeoObjectSpawner : MonoBehaviour
             return;
         }
 
-        if (!IsReady)
-        {
-            Debug.Log("[GeoObjectSpawner] Not ready yet; queued projections until spatial services initialize.");
-            EnsureInitializationRoutine();
-            return;
-        }
-
         bool hasPending = _pendingContexts != null && _pendingContexts.Count > 0;
         if (!hasPending && !useBuildingGeometryFromTextField && !createCube)
             return;
 
+        Debug.Log($"[GeoObjectSpawner] READY - spawning {_pendingContexts?.Count ?? 0} buildings now.");
         SpawnGeoObject(_pendingContexts);
         _pendingContexts = null;
     }
@@ -231,6 +236,13 @@ public class GeoObjectSpawner : MonoBehaviour
 
     private void SpawnGeoObject(List<SelectedTargetContext> enriched = null)
     {
+        // SAFETY CHECK: Never spawn if WPS isn't ready (would cause black screen)
+        if (!_wpsReady && !debugSpawnAtProvidedCoordinates && !placeBuildingsAtZeroOrigin)
+        {
+            Debug.LogError("[GeoObjectSpawner] SpawnGeoObject called but WPS not ready! Aborting to prevent black screen.");
+            return;
+        }
+        
         if (useBuildingGeometryFromTextField)
         {
             TrySpawnBuildingGeometry(buildingCoordinatesLv95, buildingName, _altitudeMeters, out _);
@@ -239,8 +251,8 @@ public class GeoObjectSpawner : MonoBehaviour
 
         if (!useBuildingGeometryFromTextField && !createCube && enriched != null)
         {
-            // Needs to fetch the data from the request instead of the SelectedTargetContext. 
-
+            Debug.Log($"[GeoObjectSpawner] Spawning {enriched.Count} buildings from enriched list...");
+            
             foreach(SelectedTargetContext projection in enriched)
             {
                 
