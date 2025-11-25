@@ -25,7 +25,6 @@ public class InfoPanelController : MonoBehaviour
     [SerializeField] private GeoInfoWMSAPI wmsApi;   // optional, for Gebäudestatus (WMS)
 
     [Header("Options")]
-    [SerializeField] private bool autoFetchOnOpen = true;
     [SerializeField] private string flaechenblattTyp = "L";  // usually "L"
     [SerializeField] private double eastOverride = 0;        // optional for debugging
     [SerializeField] private double northOverride = 0;

@@ -2,78 +2,59 @@ using UnityEngine;
 using Niantic.Lightship.AR.WorldPositioning;
 using System.Collections;
 using System.Collections.Generic;
-using Shared.Scripts.Geo; 
+using Shared.Scripts.Geo;
 using Shared.Scripts.Building;
 using Shared.Scripts.App;
-using UnityEngine.Serialization;
 
 /// <summary>
-/// Simple spawner that places a cube at a specific GPS location
-/// Supports selecting altitude from the device sensor or the Open-Elevation API (comment toggle)
+/// Spawnt Gebäude aus LV95-Polygonen in AR über Lightship WPS.
+/// Unterstützt:
+///  - Laden / Platzieren mehrerer Gebäude
+///  - Auswahl eines Gebäudes (Selection + Highlight-Material)
+///  - Anpassen von Höhe (Extrusion) und Altitude des selektierten Gebäudes
 /// </summary>
 public class GeoObjectSpawner : MonoBehaviour
 {
-    [Header("Common Object Settings")]
-    [Tooltip("Object height in meters (cube Y scale or building extrusion).")]
+    [Header("Building Settings")]
+    [Tooltip("Gebäudehöhe in Metern (Extrusion).")]
     [Min(1f)]
     public float objectHeightMeters = 5f;
 
-    [Header("Cube-Only Settings")]
-    [SerializeField] private bool createCube = false;
-    [Tooltip("Size of the cube in meters (larger = more visible from distance)")]
-    public float cubeSize = 5.0f;
-    [SerializeField] private Material cubeMaterial;
-
-
-    [Header("Building Geometry")]
-    [Tooltip("If true, CreateBuilding uses coordinates from the text field instead of SelectedTargetContext.")]
+    [Header("Building Geometry (optional manuell)")]
+    [Tooltip("Wenn true, wird die Geometrie aus dem Textfeld statt aus SelectedTargetContext gelesen.")]
     [SerializeField] private bool useBuildingGeometryFromTextField = false;
-    //This needs to be filled in from the start, information provided by the scene before 
     [SerializeField, TextArea(4, 10)] private string buildingCoordinatesLv95;
     [SerializeField] private string buildingName = "Manual";
     [SerializeField] private CreateBuilding buildingFactory;
 
-    [Header("WPS Helper")]
+    [Header("WPS / AR")]
     [SerializeField] private ARWorldPositioningObjectHelper positioningHelper;
     [SerializeField] private ARWorldPositioningManager wpsManager;
-
-    [Header("Debug")]
-    [SerializeField] private bool debugSpawnAtProvidedCoordinates = false;
-    [SerializeField] public double east = 2739782.97;
-    [SerializeField] public double north = 1250944.04;
-    [SerializeField] private bool placeBuildingsAtZeroOrigin = false;
 
     [Header("Selection")]
     [SerializeField] private Material selectedMaterial;
 
     private readonly Dictionary<string, GameObject> _buildingsByKey = new();
+
+    private readonly Dictionary<string, SelectedTargetContext> _contextsByKey = new();
+
+    public System.Action<bool> OnSelectionChanged;    private GameObject _selectedObject;
+    private string _selectedKey;
     private Dictionary<Renderer, Material[]> _selectedOriginalMaterials;
 
-    private readonly List<GameObject> _spawnedBuildings = new();
-    private GameObject _selectedObject;
-    private bool _spawnedIsBuilding;
     private double _altitudeMeters = 0.0;
 
-    // (minimal) no persistent last-lat/lon stored — convert LV95->WGS84 on demand when needed
-
-    private string _lastBuildingCoordinates;
-    private double _lastBuildingElevation;
-    private string _lastBuildingName;
-    private bool _lastClearExisting;
-
+    // WPS / Altitude Status
     private bool _wpsReady;
     private bool _altitudeReady;
     private bool _initializing;
     private Coroutine _initializationRoutine;
     private List<SelectedTargetContext> _pendingContexts;
 
-    // Public property to expose altitude for debug display
+    // Public Debug / Status Properties
     public double AltitudeMeters => _altitudeMeters;
     public bool IsWpsReady => _wpsReady;
-    
-    // Ready once altitude is fetched AND WPS is available (buildings need WPS to be positioned correctly)
     public bool IsReady => _altitudeReady && _wpsReady;
-
 
     private void Awake()
     {
@@ -86,9 +67,10 @@ public class GeoObjectSpawner : MonoBehaviour
             var go = new GameObject("ARWorldPositioningHelper");
             positioningHelper = go.AddComponent<ARWorldPositioningObjectHelper>();
         }
-        
-        if (wpsManager == null) 
+
+        if (wpsManager == null)
             wpsManager = FindFirstObjectByType<ARWorldPositioningManager>();
+
         if (wpsManager == null)
         {
             var go = new GameObject("ARWorldPositioningManager");
@@ -107,43 +89,35 @@ public class GeoObjectSpawner : MonoBehaviour
             _initializationRoutine = StartCoroutine(InitializeSpatialDependencies());
     }
 
+    /// <summary>
+    /// Public API: Spawnt all Projections (Buildings).
+    /// </summary>
     public void CreateARProjections(List<SelectedTargetContext> enriched = null)
     {
-        Debug.Log($"[GeoObjectSpawner] CreateARProjections called. IsReady={IsReady}, WpsReady={_wpsReady}, AltReady={_altitudeReady}, debugSpawn={debugSpawnAtProvidedCoordinates}");
-        
+        Debug.Log($"[GeoObjectSpawner] CreateARProjections called. IsReady={IsReady}, WpsReady={_wpsReady}, AltReady={_altitudeReady}");
+
         if (enriched != null)
             _pendingContexts = new List<SelectedTargetContext>(enriched);
 
-        // CRITICAL: Check IsReady FIRST, before any debug modes
         if (!IsReady)
         {
-            Debug.Log($"[GeoObjectSpawner] NOT READY - queuing {_pendingContexts?.Count ?? 0} projections. Waiting for WPS and altitude.");
+            Debug.Log($"[GeoObjectSpawner] NOT READY - queueing {_pendingContexts?.Count ?? 0} projections.");
             EnsureInitializationRoutine();
             return;
         }
 
-        // Only allow debug spawn if explicitly enabled AND we're ready
-        if (debugSpawnAtProvidedCoordinates)
-        {
-            Debug.Log("[GeoObjectSpawner] Debug spawn mode enabled; placing objects at world origin.");
-            _altitudeMeters = 0.0;
-            SpawnGeoObject(_pendingContexts);
-            _pendingContexts = null;
-            return;
-        }
-
         bool hasPending = _pendingContexts != null && _pendingContexts.Count > 0;
-        if (!hasPending && !useBuildingGeometryFromTextField && !createCube)
+        if (!hasPending && !useBuildingGeometryFromTextField)
             return;
 
         Debug.Log($"[GeoObjectSpawner] READY - spawning {_pendingContexts?.Count ?? 0} buildings now.");
-        SpawnGeoObject(_pendingContexts);
+        SpawnGeoObjects(_pendingContexts);
         _pendingContexts = null;
     }
-    
-    // <summary>
-    /// Waits for WPS to become available (if applicable) before fetching altitude
-    ///  </summary>
+
+    /// <summary>
+    /// Initialize WPS and Altitude (from Device).
+    /// </summary>
     private IEnumerator InitializeSpatialDependencies()
     {
         if (_initializing)
@@ -153,13 +127,14 @@ public class GeoObjectSpawner : MonoBehaviour
 
         if (wpsManager != null)
         {
-            float t = 0f, timeout = 30f; // increased timeout to 30s
+            float t = 0f;
+            const float timeout = 30f;
             Debug.Log("[GeoObjectSpawner] Waiting for WPS to become available...");
             while (!wpsManager.IsAvailable && t < timeout)
             {
                 t += Time.deltaTime;
-                if ((int)t % 5 == 0 && t > 0) // log every 5 seconds
-                    Debug.Log($"[GeoObjectSpawner] Still waiting for WPS... ({t:F0}s / {timeout}s)");
+                if ((int)t % 5 == 0 && t > 0)
+                    Debug.Log($"[GeoObjectSpawner] Still waiting for WPS... ({t:F0}s/{timeout}s)");
                 yield return null;
             }
 
@@ -167,7 +142,7 @@ public class GeoObjectSpawner : MonoBehaviour
             Debug.Log($"[GeoObjectSpawner] WPS available: {_wpsReady}");
 
             if (!_wpsReady)
-                Debug.LogError("[GeoObjectSpawner] WPS not ready after timeout. Buildings cannot be positioned in AR. Check: 1) Lightship API key, 2) GPS enabled, 3) ARWorldPositioningManager in scene.");
+                Debug.LogError("[GeoObjectSpawner] WPS not ready after timeout. Buildings cannot be positioned in AR.");
         }
         else
         {
@@ -182,19 +157,16 @@ public class GeoObjectSpawner : MonoBehaviour
 
         if (IsReady && _pendingContexts != null && _pendingContexts.Count > 0)
         {
-            SpawnGeoObject(_pendingContexts);
+            SpawnGeoObjects(_pendingContexts);
             _pendingContexts = null;
         }
     }
 
-    /// <summary>
-    /// Fetches real-world altitude from Device GPS sensor
-    /// </summary>
     private IEnumerator FetchAltitudeFromDevice()
     {
         if (!Input.location.isEnabledByUser)
         {
-            Debug.LogWarning("[GeoObjectSpawner] Device location services disabled using default altitude 0m");
+            Debug.LogWarning("[GeoObjectSpawner] Device location services disabled, using default altitude 0m");
             yield break;
         }
 
@@ -206,8 +178,9 @@ public class GeoObjectSpawner : MonoBehaviour
         }
 
         float elapsed = 0f;
-        float locationTimeout = 10f;
-        while ((status == LocationServiceStatus.Initializing || status == LocationServiceStatus.Stopped) && elapsed < locationTimeout)
+        const float locationTimeout = 10f;
+        while ((status == LocationServiceStatus.Initializing || status == LocationServiceStatus.Stopped) &&
+               elapsed < locationTimeout)
         {
             elapsed += Time.deltaTime;
             yield return null;
@@ -217,196 +190,106 @@ public class GeoObjectSpawner : MonoBehaviour
         if (status == LocationServiceStatus.Running)
         {
             _altitudeMeters = Input.location.lastData.altitude;
-            Debug.Log($"[GeoObjectSpawner] Altitude received from device sensor: {_altitudeMeters}m");
+            Debug.Log($"[GeoObjectSpawner] Altitude from device: {_altitudeMeters}m");
         }
         else
         {
-            Debug.LogWarning("[GeoObjectSpawner] Location service unavailable using default altitude 0m");
+            Debug.LogWarning("[GeoObjectSpawner] Location service unavailable, using altitude 0m");
         }
     }
 
-    private void AddBillboardLabel(Transform parent, string text = "↓ This is a Demo Cube ↓")
-    {
-        var go = new GameObject("Billboard");
-        go.transform.SetParent(parent, false);
-        go.transform.localPosition = new Vector3(0, objectHeightMeters + 0.5f, 0);
+    // --------------------------------------------------------
+    // Spawning
+    // --------------------------------------------------------
 
-        var tm = go.AddComponent<TextMesh>();
-        tm.text = text;
-        tm.fontSize = 64;
-        tm.characterSize = 0.05f;
-        tm.anchor = TextAnchor.MiddleCenter;
-        tm.color = Color.cyan;
-    }
-
-    private void SpawnGeoObject(List<SelectedTargetContext> enriched = null)
+    private void SpawnGeoObjects(List<SelectedTargetContext> enriched)
     {
-        // SAFETY CHECK: Never spawn if WPS isn't ready (would cause black screen)
-        if (!_wpsReady && !debugSpawnAtProvidedCoordinates && !placeBuildingsAtZeroOrigin)
+        if (!_wpsReady || positioningHelper == null)
         {
-            Debug.LogError("[GeoObjectSpawner] SpawnGeoObject called but WPS not ready! Aborting to prevent black screen.");
+            Debug.LogError("[GeoObjectSpawner] SpawnGeoObjects called but WPS or positioningHelper not ready.");
             return;
         }
-        
+
         if (useBuildingGeometryFromTextField)
         {
+            // manueller Single-Building-Modus
             TrySpawnBuildingGeometry(buildingCoordinatesLv95, buildingName, _altitudeMeters, out _);
             return;
         }
 
-        if (!useBuildingGeometryFromTextField && !createCube && enriched != null)
+        if (enriched == null || enriched.Count == 0)
+            return;
+
+        foreach (var ctx in enriched)
         {
-            Debug.Log($"[GeoObjectSpawner] Spawning {enriched.Count} buildings from enriched list...");
-            
-            foreach (SelectedTargetContext projection in enriched)
+            var elevation = ctx.ElevationMeters.HasValue && ctx.ElevationMeters.Value > 0.0
+                ? ctx.ElevationMeters.Value
+                : _altitudeMeters;
+
+            if (TrySpawnBuildingFromContext(ctx, elevation, out var go))
             {
-                double elevation = (projection.ElevationMeters.HasValue && projection.ElevationMeters.Value > 0.0)
-                    ? projection.ElevationMeters.Value
-                    : _altitudeMeters;
+                if (go == null) continue;
 
-                _altitudeMeters = elevation;
-
-                if (TrySpawnBuildingGeometry(projection.RawCoordinates, projection.Name, _altitudeMeters, out var go))
-                {
-                    if (go != null)
-                    {
-                        _spawnedBuildings.Add(go);
-
-                        string key = MakeBuildingKey(projection);
-                        _buildingsByKey[key] = go;
-                    }
-                }
+                var key = MakeBuildingKey(ctx);
+                _buildingsByKey[key] = go;
+                _contextsByKey[key] = ctx;
             }
         }
-
-        if (createCube)
-        {
-            var cube = SpawnCubeInternal();
-            _selectedObject = cube;
-            _spawnedIsBuilding = false;
-            _lastBuildingCoordinates = null;
-            _lastBuildingName = null;
-            _lastClearExisting = false;
-        }
     }
 
-    private GameObject SpawnCubeInternal()
+    private bool TrySpawnBuildingFromContext(SelectedTargetContext ctx, double elevation, out GameObject buildingGo)
     {
-        // Convert LV95 -> WGS84 for Lightship
-        ProjNetTransformCH.LV95ToWGS84(east, north, out double lat, out double lon);
-        Debug.Log($"[GeoObjectSpawner] Converted LV95 to WGS84: {east}, {north} -> {lat}, {lon}");
-
-        // Create cube
-        var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        cube.name = "GeoCube";
-        cube.transform.localScale = new Vector3(cubeSize, objectHeightMeters, cubeSize);
-
-        // Use linked material (with a safe instance)
-        Material mat = cubeMaterial;
-        cube.GetComponent<Renderer>().material = mat;
-
-        if (debugSpawnAtProvidedCoordinates)
-        {
-            cube.transform.SetParent(transform, false);
-            cube.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-            Debug.Log($"[GeoObjectSpawner] Debug cube spawned at world origin | Original GPS target: {lat}, {lon} | Altitude override: {_altitudeMeters}m");
-        }
-        else
-        {
-            // Position at GPS location
-            positioningHelper.AddOrUpdateObject(cube, lat, lon, _altitudeMeters, Quaternion.identity);
-
-            Debug.Log($"[GeoObjectSpawner] Cube spawned at GPS: {lat}, {lon} | Altitude: {_altitudeMeters}m | Size: {cubeSize}m | Height: {objectHeightMeters}m");
-        }
-
-        AddBillboardLabel(cube.transform);
-
-        return cube;
+        return TrySpawnBuildingGeometry(ctx.RawCoordinates, ctx.Name, elevation, out buildingGo);
     }
 
-
-    public bool TrySpawnBuildingGeometry(string coordinatesLv95, string name, double elevation, out GameObject buildingGo)
+    /// <summary>
+    /// Build Building-Mesh per CreateBuilding and positioning with WPS.
+    /// Renderers are disabled until positioning is finished.
+    /// </summary>
+    private bool TrySpawnBuildingGeometry(string coordinatesLv95, string name, double elevation, out GameObject buildingGo)
     {
         buildingGo = null;
 
         if (!buildingFactory)
         {
-            Debug.LogWarning("[GeoObjectSpawner] Building factory not assigned and none found in scene; falling back to cube.");
+            Debug.LogWarning("[GeoObjectSpawner] No buildingFactory assigned.");
             return false;
         }
 
-        var targetCoordinates = coordinatesLv95;
-        if (string.IsNullOrWhiteSpace(targetCoordinates))
-        {
+        if (string.IsNullOrWhiteSpace(coordinatesLv95))
             return false;
-        }
 
         var buildingNameToUse = string.IsNullOrWhiteSpace(name) ? buildingName : name;
         float altitude = (float)(elevation > 0.0 ? elevation : _altitudeMeters);
 
         buildingFactory.SetExtrusionHeight(objectHeightMeters);
 
-        var building = buildingFactory.CreateBuildingFromCoordinates(targetCoordinates, buildingNameToUse, altitude);
+        var building = buildingFactory.CreateBuildingFromCoordinates(coordinatesLv95, buildingNameToUse, altitude);
         if (building == null || building.GameObject == null)
-        {
             return false;
-        }
 
         buildingGo = building.GameObject;
-        Debug.Log($"[GeoObjectSpawner] Building '{buildingNameToUse}' spawned at coordinates: {targetCoordinates} | Altitude: {altitude}m | Height {objectHeightMeters}m");
-
+        Debug.Log($"[GeoObjectSpawner] Building '{buildingNameToUse}' spawned | Altitude: {altitude}m | Height {objectHeightMeters}m");
 
         var renderers = buildingGo.GetComponentsInChildren<Renderer>(true);
         foreach (var r in renderers)
             r.enabled = false;
 
-
-        if (placeBuildingsAtZeroOrigin)
+        if (!_wpsReady || positioningHelper == null)
         {
-            buildingGo.transform.SetParent(transform, false);
-            buildingGo.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-            Debug.Log("[GeoObjectSpawner] Building forced to origin.");
-
-            foreach (var r in renderers)
-                r.enabled = true;
-
+            Debug.LogWarning($"[GeoObjectSpawner] WPS not ready or no positioningHelper, destroying building '{buildingNameToUse}'.");
+            Destroy(buildingGo);
+            return false;
         }
-        else if (debugSpawnAtProvidedCoordinates && positioningHelper != null)
-        {
-            ProjNetTransformCH.LV95ToWGS84(east, north, out double dbgLat, out double dbgLon);
 
-            StartCoroutine(PositionAndRevealBuilding(
-                buildingGo,
-                dbgLat,
-                dbgLon,
-                altitude,
-                renderers));
-
-            Debug.Log($"[GeoObjectSpawner] Debug positioning building '{buildingNameToUse}' at GPS: {dbgLat:F6}, {dbgLon:F6}, alt={building.AltitudeMeters}m");
-        }
-        else if (positioningHelper != null)
-        {
-            // CRITICAL: Only position if WPS is actually ready, otherwise building stays at origin (black screen)
-            if (!_wpsReady)
-            {
-                Debug.LogWarning($"[GeoObjectSpawner] WPS not ready! Destroying building '{buildingNameToUse}' to prevent black screen.");
-                Destroy(buildingGo);
-                return false;
-            }
-            
-            Debug.Log($"[GeoObjectSpawner] Positioning building '{buildingNameToUse}' at GPS: {building.Latitude:F6}, {building.Longitude:F6}, alt={building.AltitudeMeters}m");
-            StartCoroutine(PositionAndRevealBuilding(buildingGo, building.Latitude, building.Longitude, building.AltitudeMeters, renderers));
-        }
-        else
-        {
-            Debug.LogWarning($"[GeoObjectSpawner] No positioningHelper! Building '{buildingNameToUse}' stuck at factory origin.");
-            foreach (var r in renderers)
-                r.enabled = true;
-
-        }
+        StartCoroutine(PositionAndRevealBuilding(
+            buildingGo,
+            building.Latitude,
+            building.Longitude,
+            building.AltitudeMeters,
+            renderers));
 
         VibrationService.TriggerLoadVibration(1000);
-
         return true;
     }
 
@@ -422,10 +305,8 @@ public class GeoObjectSpawner : MonoBehaviour
 
         go.transform.position = new Vector3(0f, -10000f, 0f);
 
-        // AR-Position anfragen
         positioningHelper.AddOrUpdateObject(go, lat, lon, alt, Quaternion.identity);
 
-        // 1–N Frames warten, bis Transform plausibel ist
         const int maxFrames = 30;
         int frame = 0;
         while (go != null && frame < maxFrames)
@@ -454,135 +335,27 @@ public class GeoObjectSpawner : MonoBehaviour
         Debug.Log($"[GeoObjectSpawner] Reveal building after {frame} frame(s). Pos={go.transform.position}");
     }
 
-    private void RespawnSelectedBuilding()
-    {
-        if (string.IsNullOrWhiteSpace(_lastBuildingCoordinates))
-            return;
-
-        if (!TrySpawnBuildingGeometry(_lastBuildingCoordinates, _lastBuildingName, _altitudeMeters, out _))
-        {
-            _selectedObject = null;
-            _spawnedIsBuilding = false;
-        }
-    }
+    // --------------------------------------------------------
+    // Clear / Selection
+    // --------------------------------------------------------
 
     public void ClearAllBuildings()
     {
-        // Materialien der Selection zurücksetzen
-        if (_selectedObject != null && _selectedOriginalMaterials != null)
+        RestoreSelectionMaterials();
+
+        foreach (var kvp in _buildingsByKey)
         {
-            foreach (var kvp in _selectedOriginalMaterials)
-            {
-                if (kvp.Key != null)
-                    kvp.Key.materials = kvp.Value;
-            }
+            if (kvp.Value != null)
+                Destroy(kvp.Value);
         }
 
-        _selectedOriginalMaterials = null;
-        _selectedObject = null;
-
-        foreach (var go in _spawnedBuildings)
-        {
-            if (go != null)
-                Destroy(go);
-        }
-
-        _spawnedBuildings.Clear();
         _buildingsByKey.Clear();
+        _contextsByKey.Clear();
 
-        _spawnedIsBuilding = false;
-        _lastBuildingCoordinates = null;
-        _lastBuildingName = null;
-        _lastBuildingElevation = 0.0;
-    }
-
-    public void SetObjectHeightMeters(float h)
-    {
-        objectHeightMeters = Mathf.Max(1f, h);
-        if (_selectedObject == null)
-            return;
-
-        if (_spawnedIsBuilding)
-        {
-            if (buildingFactory != null)
-            {
-                buildingFactory.SetExtrusionHeight(objectHeightMeters);
-            }
-
-            var toDestroy = _selectedObject;
-            _selectedObject = null;
-            if (toDestroy != null)
-            {
-                Destroy(toDestroy);
-            }
-
-            RespawnSelectedBuilding();
-            Debug.Log("[GeoObjectSpawner] Building height set to " + objectHeightMeters + " meters.");
-            return;
-        }
-
-        var s = _selectedObject.transform.localScale;
-        s.y = objectHeightMeters;
-        _selectedObject.transform.localScale = s;
-
-        Debug.Log("[GeoObjectSpawner] Cube height set to " + objectHeightMeters + " meters.");
-
-        var bb = _selectedObject.transform.Find("Billboard");
-        if (bb != null) bb.localPosition = new Vector3(0f, objectHeightMeters + 0.5f, 0f);
-    }
-
-    /// <summary>
-    /// Adjusts (adds/deducts) the altitude (meters) where the currently spawned object will be placed.
-    /// The parameter `a` is treated as a delta: positive to raise, negative to lower.
-    /// The resulting altitude is clamped to a minimum of 0 meters.
-    /// If a building is spawned, it will be destroyed and respawned at the new altitude.
-    /// If a cube is spawned, its AR position will be updated if possible (or moved locally in debug mode).
-    /// </summary>
-    public void SetBuildingAltitudeMeters(double a)
-    {
-    // apply as delta
-    _altitudeMeters += a;
-    // clamp to >= 0 meters
-    _altitudeMeters = System.Math.Max(0.0, _altitudeMeters);
-
-        if (_selectedObject == null)
-            return;
-
-        if (_spawnedIsBuilding)
-        {
-            // Recreate the building using the new altitude
-            if (buildingFactory != null)
-            {
-                var toDestroy = _selectedObject;
-                _selectedObject = null;
-                if (toDestroy != null)
-                {
-                    Destroy(toDestroy);
-                }
-
-                RespawnSelectedBuilding();
-                Debug.Log("[GeoObjectSpawner] Building altitude set to " + _altitudeMeters + " meters.");
-            }
-
-            return;
-        }
-
-        // If we have a cube spawned, update its altitude.
-        if (debugSpawnAtProvidedCoordinates)
-        {
-            // In debug mode the cube is parented to this transform at Vector3.zero; move it locally along Y
-            _selectedObject.transform.localPosition = new Vector3(0f, (float)_altitudeMeters, 0f);
-            Debug.Log($"[GeoObjectSpawner] Debug cube altitude set to {_altitudeMeters}m (local Y moved).");
-            return;
-        }
-
-        // Minimal approach: convert LV95->WGS84 on demand using the stored east/north and update via positioning helper
-        if (positioningHelper != null)
-        {
-            ProjNetTransformCH.LV95ToWGS84(east, north, out double lat, out double lon);
-            positioningHelper.AddOrUpdateObject(_selectedObject, lat, lon, _altitudeMeters, Quaternion.identity);
-            Debug.Log("[GeoObjectSpawner] Cube altitude set to " + _altitudeMeters + " meters.");
-        }
+        _selectedObject = null;
+        _selectedKey = null;
+        _selectedOriginalMaterials = null;
+        OnSelectionChanged?.Invoke(false);
     }
 
     public void SelectBuilding(SelectedTargetContext ctx)
@@ -590,14 +363,13 @@ public class GeoObjectSpawner : MonoBehaviour
         if (ctx == null)
             return;
 
-        _spawnedIsBuilding       = true;
-        _altitudeMeters          = ctx.ElevationMeters ?? _altitudeMeters;
-        _lastBuildingCoordinates = ctx.RawCoordinates;
-        _lastBuildingName        = ctx.Name;
-        _lastBuildingElevation   = _altitudeMeters;
-
         string key = MakeBuildingKey(ctx);
+
+        // Altitude aus Kontext uebernehmen (falls vorhanden)
+        _altitudeMeters = ctx.ElevationMeters ?? _altitudeMeters;
+
         SelectBuildingByKey(key);
+        OnSelectionChanged?.Invoke(true);
     }
 
     private void SelectBuildingByKey(string key)
@@ -605,18 +377,9 @@ public class GeoObjectSpawner : MonoBehaviour
         if (string.IsNullOrEmpty(key))
             return;
 
-        // Reset previous selection
-        if (_selectedObject != null && _selectedOriginalMaterials != null)
-        {
-            Debug.Log("[GeoObjectSpawner] Restoring original materials of previous selected building.");
-            foreach (var kvp in _selectedOriginalMaterials)
-            {
-                if (kvp.Key != null)
-                    kvp.Key.materials = kvp.Value;
-            }
-        }
-
+        RestoreSelectionMaterials();
         _selectedObject = null;
+        _selectedKey = null;
         _selectedOriginalMaterials = null;
 
         if (!_buildingsByKey.TryGetValue(key, out var go) || go == null)
@@ -626,6 +389,7 @@ public class GeoObjectSpawner : MonoBehaviour
         }
 
         _selectedObject = go;
+        _selectedKey = key;
 
         if (selectedMaterial == null)
             return;
@@ -637,30 +401,103 @@ public class GeoObjectSpawner : MonoBehaviour
         {
             if (r == null) continue;
 
-            // Save original
             _selectedOriginalMaterials[r] = r.materials;
 
-            // replace with selectedMat
-            var count = r.materials.Length;
+            int count = r.materials.Length;
             var mats = new Material[count];
             for (int i = 0; i < count; i++)
                 mats[i] = selectedMaterial;
 
             r.materials = mats;
         }
+
         Debug.Log("[GeoObjectSpawner] Selected building with key=" + key);
+    }
+
+    private void RestoreSelectionMaterials()
+    {
+        if (_selectedObject == null || _selectedOriginalMaterials == null)
+            return;
+
+        foreach (var kvp in _selectedOriginalMaterials)
+        {
+            if (kvp.Key != null)
+                kvp.Key.materials = kvp.Value;
+        }
     }
 
     private string MakeBuildingKey(SelectedTargetContext ctx)
     {
         if (!string.IsNullOrEmpty(ctx.Egid))
-            return ctx.Egid; // Falls vorhanden, immer nutzen
+            return ctx.Egid;
 
-        // Fallback → RawCoordinates (100 % eindeutig)
         if (!string.IsNullOrEmpty(ctx.RawCoordinates))
             return ctx.RawCoordinates.GetHashCode().ToString();
 
-        // Worst-case → Lat/Lon kombinieren
-        return (ctx.Latitude.ToString("F6") + "_" + ctx.Longitude.ToString("F6")).GetHashCode().ToString();
+        return (ctx.Latitude.ToString("F6") + "_" + ctx.Longitude.ToString("F6"))
+            .GetHashCode()
+            .ToString();
+    }
+
+    public void SetObjectHeightMeters(float h)
+    {
+        objectHeightMeters = Mathf.Max(1f, h);
+
+        if (string.IsNullOrEmpty(_selectedKey))
+            return;
+
+        if (!_contextsByKey.TryGetValue(_selectedKey, out var ctx))
+            return;
+
+        ctx.ElevationMeters = ctx.ElevationMeters ?? _altitudeMeters;
+        _contextsByKey[_selectedKey] = ctx;
+
+        RebuildSelectedBuilding(ctx);
+        Debug.Log("[GeoObjectSpawner] Building height set to " + objectHeightMeters + " meters.");
+    }
+
+    public void SetBuildingAltitudeMeters(double delta)
+    {
+        _altitudeMeters += delta;
+        _altitudeMeters = System.Math.Max(0.0, _altitudeMeters);
+
+        if (string.IsNullOrEmpty(_selectedKey))
+            return;
+
+        if (!_contextsByKey.TryGetValue(_selectedKey, out var ctx))
+            return;
+
+        ctx.ElevationMeters = _altitudeMeters;
+        _contextsByKey[_selectedKey] = ctx;
+
+        RebuildSelectedBuilding(ctx);
+        Debug.Log("[GeoObjectSpawner] Building altitude set to " + _altitudeMeters + " meters.");
+    }
+
+    private void RebuildSelectedBuilding(SelectedTargetContext ctx)
+    {
+        if (string.IsNullOrEmpty(_selectedKey))
+            return;
+
+        RestoreSelectionMaterials();
+
+        if (_buildingsByKey.TryGetValue(_selectedKey, out var oldGo) && oldGo != null)
+            Destroy(oldGo);
+
+        _buildingsByKey.Remove(_selectedKey);
+
+        // neu spawnen mit aktueller Hoehe / Altitude
+        var elevation = ctx.ElevationMeters ?? _altitudeMeters;
+        if (TrySpawnBuildingFromContext(ctx, elevation, out var newGo) && newGo != null)
+        {
+            _buildingsByKey[_selectedKey] = newGo;
+            SelectBuildingByKey(_selectedKey);
+        }
+        else
+        {
+            _selectedObject = null;
+            _selectedKey = null;
+            _selectedOriginalMaterials = null;
+        }
     }
 }

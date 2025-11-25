@@ -32,7 +32,6 @@ public class NearbyProjectsListController : MonoBehaviour
 
     [Header("Options")]
     [SerializeField] private bool autoFetchOnStart = true;
-    [SerializeField] private string arSceneName = "ARScreen";    // Change to your AR scene name
 
     private readonly List<BuildingListItemView> _pool = new();
     private List<ProjectedBuilding> _current = new();
