@@ -260,6 +260,81 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &101683672
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 101683675}
+  - component: {fileID: 101683674}
+  - component: {fileID: 101683673}
+  m_Layer: 5
+  m_Name: Map
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &101683673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 101683672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.8117648, g: 0.8117648, b: 0.8117648, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 1
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &101683674
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 101683672}
+  m_CullTransparentMesh: 1
+--- !u!224 &101683675
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 101683672}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1758180094}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &107412110
 GameObject:
   m_ObjectHideFlags: 0
@@ -639,8 +714,8 @@ RectTransform:
   - {fileID: 1365855111}
   m_Father: {fileID: 1886635568}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.021367522, y: 0.05015798}
-  m_AnchorMax: {x: 0.97863245, y: 0.9344392}
+  m_AnchorMin: {x: 0.023148147, y: 0.009920635}
+  m_AnchorMax: {x: 0.9768519, y: 0.99007934}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -3411,7 +3486,6 @@ MonoBehaviour:
   headerTitle: {fileID: 426933117}
   closeButton: {fileID: 469681419}
   wmsApi: {fileID: 1022160013}
-  autoFetchOnOpen: 1
   flaechenblattTyp: L
   eastOverride: 0
   northOverride: 0
@@ -3461,9 +3535,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   objectHeightMeters: 3
-  createCube: 0
-  cubeSize: 5
-  cubeMaterial: {fileID: 2100000, guid: 117b875761173479c81e54a847f2cc4d, type: 2}
   useBuildingGeometryFromTextField: 0
   buildingCoordinatesLv95: '2739913.487,1251050.088 2739913.773,1251050.294 2739914.064,1251050.493
     2739914.359,1251050.685 2739914.595,1251050.835 2739914.833,1251050.981 2739915.073,1251051.123
@@ -3489,10 +3560,6 @@ MonoBehaviour:
   buildingFactory: {fileID: 1070883117}
   positioningHelper: {fileID: 783262639}
   wpsManager: {fileID: 783262638}
-  debugSpawnAtProvidedCoordinates: 0
-  east: 2742967.37
-  north: 1252781.79
-  placeBuildingsAtZeroOrigin: 0
   selectedMaterial: {fileID: 2100000, guid: 6226f2908c21c4a80ac067ca99065c96, type: 2}
 --- !u!114 &1070883117
 MonoBehaviour:
@@ -3592,7 +3659,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 14.15
+  m_fontSize: 14.1
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -4878,7 +4945,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1758180094
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4890,7 +4957,8 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 101683675}
   m_Father: {fileID: 1365855111}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -4911,7 +4979,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 0.64361966, b: 0, a: 0.6431373}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -5551,7 +5619,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b778c5c4996a41f3936cf2c0d0dea43, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  geoSpawner: {fileID: 1070883115}
   hideWhenCloserThanMeters: 30
 --- !u!114 &2024831582
 MonoBehaviour:
@@ -5772,7 +5839,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 24.7
+  m_fontSize: 26.7
   m_fontSizeBase: 48
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -6496,6 +6563,7 @@ GameObject:
   - component: {fileID: 159269041981709329}
   - component: {fileID: 5092082945738243083}
   - component: {fileID: 5034843794202268292}
+  - component: {fileID: 5092082945738243084}
   m_Layer: 0
   m_Name: Start
   m_TagString: Untagged
@@ -7366,17 +7434,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   wfs: {fileID: 5092082945738243083}
+  wfsMapAPI: {fileID: 5092082945738243084}
   geoObjectSpawner: {fileID: 1070883115}
   refreshButton: {fileID: 5349659654812452723}
   infoPanelController: {fileID: 1022160014}
   distanceDropdown: {fileID: 3190477881233420605}
   listContent: {fileID: 5163131582262299178}
   itemPrefab: {fileID: 1192473429710004758, guid: dbfae73afd97f40a0849f0556ef45688, type: 3}
+  mapImage: {fileID: 101683673}
   loadingText: {fileID: 4119119633594396771}
   noProjectsText: {fileID: 7010155067809956998}
   noPermissionsPanel: {fileID: 368839527828172104}
   autoFetchOnStart: 1
-  arSceneName: GeoPlacementScene
 --- !u!1 &5077107371955104126
 GameObject:
   m_ObjectHideFlags: 0
@@ -7418,6 +7487,22 @@ MonoBehaviour:
   locationServiceTimeoutSeconds: 20
   waitForElevation: 1
   elevationRequestDelaySeconds: 0.03
+--- !u!114 &5092082945738243084
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2691407738701640507}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d3670ac0c9142f4c9a2bafae00fee99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetCanvasImage: {fileID: 101683673}
+  useDebugCoordinates: 0
+  debugLv95CoordinatesEast: 2743009.25
+  debugLv95CoordinatesNorth: 1252728.125
 --- !u!224 &5163131582262299178
 RectTransform:
   m_ObjectHideFlags: 0
@@ -8271,7 +8356,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 25.9
+  m_fontSize: 30.95
   m_fontSizeBase: 45
   m_fontWeight: 400
   m_enableAutoSizing: 1

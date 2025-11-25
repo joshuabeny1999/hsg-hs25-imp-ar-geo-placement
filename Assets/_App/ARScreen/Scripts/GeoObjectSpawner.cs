@@ -127,19 +127,7 @@ public class GeoObjectSpawner : MonoBehaviour
 
         if (wpsManager != null)
         {
-            float t = 0f;
-            const float timeout = 30f;
-            Debug.Log("[GeoObjectSpawner] Waiting for WPS to become available...");
-            while (!wpsManager.IsAvailable && t < timeout)
-            {
-                t += Time.deltaTime;
-                if ((int)t % 5 == 0 && t > 0)
-                    Debug.Log($"[GeoObjectSpawner] Still waiting for WPS... ({t:F0}s/{timeout}s)");
-                yield return null;
-            }
-
             _wpsReady = wpsManager.IsAvailable;
-            Debug.Log($"[GeoObjectSpawner] WPS available: {_wpsReady}");
 
             if (!_wpsReady)
                 Debug.LogError("[GeoObjectSpawner] WPS not ready after timeout. Buildings cannot be positioned in AR.");

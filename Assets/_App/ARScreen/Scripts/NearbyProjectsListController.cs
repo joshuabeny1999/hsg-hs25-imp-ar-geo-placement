@@ -13,6 +13,7 @@ public class NearbyProjectsListController : MonoBehaviour
 {
     [Header("GeoInfo API")]
     [SerializeField] private GeoInfoWFSAPI wfs;   
+    [SerializeField] private GeoInfoWFSMapAPI wfsMapAPI;
 
     [Header("GeoObject Spawner")]
     [SerializeField] private GeoObjectSpawner geoObjectSpawner;
@@ -24,6 +25,8 @@ public class NearbyProjectsListController : MonoBehaviour
     [SerializeField] private TMP_Dropdown distanceDropdown;
     [SerializeField] private Transform listContent;             // ScrollView/Viewport/Content
     [SerializeField] private BuildingListItemView itemPrefab;   // Your row prefab
+
+    [SerializeField] private Image mapImage;
 
     [Header("Status Labels")]
     [SerializeField] private TMP_Text loadingText;
@@ -92,6 +95,9 @@ public class NearbyProjectsListController : MonoBehaviour
         if (_isLoading) return;
         _isLoading = true;
 
+        if (mapImage)
+            mapImage.transform.parent.gameObject.SetActive(false);
+
         if (geoObjectSpawner)
             geoObjectSpawner.ClearAllBuildings();
 
@@ -118,6 +124,33 @@ public class NearbyProjectsListController : MonoBehaviour
         for (int i = 0; i < _pool.Count; i++) _pool[i].gameObject.SetActive(false);
 
         wfs?.RefreshProjectedFeatures();
+
+        // Also fetch map of the current value of the dropdown
+
+        if (distanceDropdown != null)
+        {
+            int scale;
+            int dropdownValue = int.Parse(distanceDropdown.options[distanceDropdown.value].text.Split(' ')[0]);
+            switch (dropdownValue)
+            {
+                case 250:
+                    scale = 1000;
+                    break;
+                case 500:
+                    scale = 1500;
+                    break;
+                case 750:
+                    scale = 2000;
+                    break;
+                case 1000:
+                    scale = 2500;
+                    break;
+                default:
+                    scale = 1000; 
+                    break;
+            }
+            wfsMapAPI?.FetchMap(scale);
+        }
     }
 
     void OnFeaturesFetched(List<ProjectedBuilding> list)
