@@ -639,8 +639,8 @@ RectTransform:
   - {fileID: 1365855111}
   m_Father: {fileID: 1886635568}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.023148147, y: 0.009920635}
-  m_AnchorMax: {x: 0.9768519, y: 0.99007934}
+  m_AnchorMin: {x: 0.021367522, y: 0.05015798}
+  m_AnchorMax: {x: 0.97863245, y: 0.9344392}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -2877,7 +2877,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &856208532
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3591,7 +3591,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 14.1
+  m_fontSize: 14.15
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -5124,7 +5124,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 1}
+  m_BackGroundColor: {r: 0.6886792, g: 0.6886792, b: 0.6886792, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -5771,7 +5771,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 26.7
+  m_fontSize: 24.7
   m_fontSizeBase: 48
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -6412,7 +6412,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0.878219}
-  m_AnchoredPosition: {x: 0.14602661, y: 0.0004272461}
+  m_AnchoredPosition: {x: 0.14602661, y: 0.00048828125}
   m_SizeDelta: {x: 0.2921, y: 0.0012207}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &2405776908318676602
@@ -7409,8 +7409,8 @@ MonoBehaviour:
   maxFeatureCount: 1000000
   boundingBoxSizeMeters: 300
   useDebugCoordinates: 0
-  debugLv95CoordinatesNorth: 2704002
   debugLv95CoordinatesEast: 1232778
+  debugLv95CoordinatesNorth: 2704002
   locationDesiredAccuracyMeters: 5
   locationUpdateDistanceMeters: 0.5
   locationServiceTimeoutSeconds: 20
@@ -7432,7 +7432,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: -3.9734, y: 0.000030517578}
+  m_AnchoredPosition: {x: -3.9734, y: 0}
   m_SizeDelta: {x: 465.35, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &5217596384443372354
@@ -8269,7 +8269,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 30.95
+  m_fontSize: 25.9
   m_fontSizeBase: 45
   m_fontWeight: 400
   m_enableAutoSizing: 1

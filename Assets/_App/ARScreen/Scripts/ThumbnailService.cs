@@ -46,7 +46,8 @@ using Shared.Scripts.Geo;
 
             _cam = rig.transform.Find("PreviewCamera").GetComponent<Camera>();
             _cam.clearFlags = CameraClearFlags.SolidColor;
-            _cam.backgroundColor = new Color(0, 0, 0, 0); 
+            _cam.backgroundColor = new Color(0, 0, 0, 0);
+            _cam.enabled = false;
             
             _light = rig.GetComponentInChildren<Light>(true);
 
@@ -104,6 +105,11 @@ using Shared.Scripts.Geo;
             var go = built.GameObject;
             go.transform.SetParent(_stage, false);
             SetLayerRecursive(go, LayerMask.NameToLayer("ThumbnailPreview"));
+
+            // Re-enable renderers because building meshes were spawned hidden in AR factory mode
+            var renderers = go.GetComponentsInChildren<Renderer>(true);
+            foreach (var r in renderers)
+                r.enabled = true;
 
             // Reset any scaling/rotation (preview is local)
             go.transform.localPosition = Vector3.zero;

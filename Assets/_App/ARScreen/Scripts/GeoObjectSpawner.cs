@@ -260,9 +260,9 @@ public class GeoObjectSpawner : MonoBehaviour
                 ? projection.ElevationMeters.Value
                 : _altitudeMeters;
 
-            _altitudeMeters = elevation;
+                _altitudeMeters = elevation;
 
-            TrySpawnBuildingGeometry(projection.RawCoordinates, projection.Name, _altitudeMeters, out _);
+                TrySpawnBuildingGeometry(projection.RawCoordinates, projection.Name, _altitudeMeters, out _);
             }
             
         }
@@ -343,6 +343,9 @@ public class GeoObjectSpawner : MonoBehaviour
         buildingGo = building.GameObject;
         Debug.Log($"[GeoObjectSpawner] Building '{buildingNameToUse}' spawned at coordinates: {targetCoordinates} | Altitude: {altitude}m | Height {objectHeightMeters}m");
 
+
+        var renderers = buildingGo.GetComponentsInChildren<Renderer>(true);
+
         if (placeBuildingsAtZeroOrigin)
         {
             buildingGo.transform.SetParent(transform, false);
@@ -377,6 +380,10 @@ public class GeoObjectSpawner : MonoBehaviour
         {
             Debug.LogWarning($"[GeoObjectSpawner] No positioningHelper! Building '{buildingNameToUse}' stuck at factory origin.");
         }
+
+        // Enable renderes now that we're positioned correctly
+        foreach (var r in renderers)
+            r.enabled = true;
 
         _spawnedObject = buildingGo;
         _spawnedIsBuilding = true;
