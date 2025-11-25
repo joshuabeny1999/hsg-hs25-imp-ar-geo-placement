@@ -78,8 +78,8 @@ namespace Shared.Scripts.Geo
         [SerializeField, Tooltip("Use manual LV95 coordinates instead of the device GPS (for in-editor testing).")]
         private bool useDebugCoordinates = false;
 
-        [SerializeField] private double debugLv95CoordinatesNorth = 2743009.24f;
-        [SerializeField] private double debugLv95CoordinatesEast = 1252728.11f;
+        [SerializeField] private double debugLv95CoordinatesEast = 2743009.24f;
+        [SerializeField] private double debugLv95CoordinatesNorth = 1252728.11f;
         [SerializeField] private float locationDesiredAccuracyMeters = 5f;
         [SerializeField] private float locationUpdateDistanceMeters = 0.5f;
         [SerializeField] private float locationServiceTimeoutSeconds = 20f;
@@ -119,7 +119,7 @@ namespace Shared.Scripts.Geo
                 Debug.Log(
                     $"GeoInfo API: using debug LV95 coordinates {debugLv95CoordinatesNorth}, {debugLv95CoordinatesEast}");
 
-                ProjNetTransformCH.LV95ToWGS84(debugLv95CoordinatesNorth, debugLv95CoordinatesEast, out double lat,
+                ProjNetTransformCH.LV95ToWGS84(debugLv95CoordinatesEast, debugLv95CoordinatesNorth, out double lat,
                     out double lon);
                 yield return FetchProjectedFeatures(lat, lon, onCompleted);
                 yield break;
