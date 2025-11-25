@@ -345,18 +345,32 @@ public class GeoObjectSpawner : MonoBehaviour
 
 
         var renderers = buildingGo.GetComponentsInChildren<Renderer>(true);
+        foreach (var r in renderers)
+            r.enabled = false;
+
 
         if (placeBuildingsAtZeroOrigin)
         {
             buildingGo.transform.SetParent(transform, false);
             buildingGo.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
             Debug.Log("[GeoObjectSpawner] Building forced to origin.");
+
+            foreach (var r in renderers)
+                r.enabled = true;
+
         }
-        else if (debugSpawnAtProvidedCoordinates)
+        else if (debugSpawnAtProvidedCoordinates && positioningHelper != null)
         {
-            buildingGo.transform.SetParent(transform, false);
-            buildingGo.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-            Debug.Log($"[GeoObjectSpawner] Debug building spawned at provided coordinates | Original GPS target: {building.Latitude}, {building.Longitude}");
+            ProjNetTransformCH.LV95ToWGS84(east, north, out double dbgLat, out double dbgLon);
+
+            StartCoroutine(PositionAndRevealBuilding(
+                buildingGo,
+                dbgLat,
+                dbgLon,
+                altitude,
+                renderers));
+
+            Debug.Log($"[GeoObjectSpawner] Debug positioning building '{buildingNameToUse}' at GPS: {dbgLat:F6}, {dbgLon:F6}, alt={building.AltitudeMeters}m");
         }
         else if (positioningHelper != null)
         {
@@ -369,21 +383,15 @@ public class GeoObjectSpawner : MonoBehaviour
             }
             
             Debug.Log($"[GeoObjectSpawner] Positioning building '{buildingNameToUse}' at GPS: {building.Latitude:F6}, {building.Longitude:F6}, alt={building.AltitudeMeters}m");
-            positioningHelper.AddOrUpdateObject(
-                buildingGo,
-                building.Latitude,
-                building.Longitude,
-                building.AltitudeMeters,
-                Quaternion.identity);
+            StartCoroutine(PositionAndRevealBuilding(buildingGo, building.Latitude, building.Longitude, building.AltitudeMeters, renderers));
         }
         else
         {
             Debug.LogWarning($"[GeoObjectSpawner] No positioningHelper! Building '{buildingNameToUse}' stuck at factory origin.");
-        }
+            foreach (var r in renderers)
+                r.enabled = true;
 
-        // Enable renderes now that we're positioned correctly
-        foreach (var r in renderers)
-            r.enabled = true;
+        }
 
         _spawnedObject = buildingGo;
         _spawnedIsBuilding = true;
@@ -395,6 +403,50 @@ public class GeoObjectSpawner : MonoBehaviour
         VibrationService.TriggerLoadVibration(1000);
 
         return true;
+    }
+
+    private IEnumerator PositionAndRevealBuilding(
+        GameObject go,
+        double lat,
+        double lon,
+        double alt,
+        Renderer[] renderers)
+    {
+        if (go == null || positioningHelper == null)
+            yield break;
+
+        go.transform.position = new Vector3(0f, -10000f, 0f);
+
+        // AR-Position anfragen
+        positioningHelper.AddOrUpdateObject(go, lat, lon, alt, Quaternion.identity);
+
+        // 1–N Frames warten, bis Transform plausibel ist
+        const int maxFrames = 30;
+        int frame = 0;
+        while (go != null && frame < maxFrames)
+        {
+            var pos = go.transform.position;
+
+            bool hasValidPos =
+                pos != Vector3.zero &&
+                pos.y > -9999f &&
+                !float.IsNaN(pos.x) && !float.IsNaN(pos.y) && !float.IsNaN(pos.z) &&
+                !float.IsInfinity(pos.x) && !float.IsInfinity(pos.y) && !float.IsInfinity(pos.z);
+
+            if (hasValidPos)
+                break;
+
+            frame++;
+            yield return null;
+        }
+
+        foreach (var r in renderers)
+        {
+            if (r != null)
+                r.enabled = true;
+        }
+
+        Debug.Log($"[GeoObjectSpawner] Reveal building after {frame} frame(s). Pos={go.transform.position}");
     }
 
     private void RespawnLastBuilding()
