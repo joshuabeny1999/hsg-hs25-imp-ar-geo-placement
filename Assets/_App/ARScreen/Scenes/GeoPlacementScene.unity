@@ -1246,8 +1246,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 106.13, y: -87.709045}
-  m_SizeDelta: {x: 162.26, y: 75.41809}
+  m_AnchoredPosition: {x: 106.13, y: -78.764465}
+  m_SizeDelta: {x: 162.26, y: 57.52893}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &426933117
 MonoBehaviour:
@@ -1296,7 +1296,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 55.35
+  m_fontSize: 42.2
   m_fontSizeBase: 60
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -1460,7 +1460,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1005, y: -87.709045}
+  m_AnchoredPosition: {x: 1005, y: -78.764465}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &469681419
@@ -3493,6 +3493,7 @@ MonoBehaviour:
   east: 2742967.37
   north: 1252781.79
   placeBuildingsAtZeroOrigin: 0
+  selectedMaterial: {fileID: 2100000, guid: 6226f2908c21c4a80ac067ca99065c96, type: 2}
 --- !u!114 &1070883117
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3745,7 +3746,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 571.13, y: -87.709045}
+  m_AnchoredPosition: {x: 571.13, y: -78.764465}
   m_SizeDelta: {x: 767.74, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1137600837
@@ -7367,6 +7368,7 @@ MonoBehaviour:
   wfs: {fileID: 5092082945738243083}
   geoObjectSpawner: {fileID: 1070883115}
   refreshButton: {fileID: 5349659654812452723}
+  infoPanelController: {fileID: 1022160014}
   distanceDropdown: {fileID: 3190477881233420605}
   listContent: {fileID: 5163131582262299178}
   itemPrefab: {fileID: 1192473429710004758, guid: dbfae73afd97f40a0849f0556ef45688, type: 3}
@@ -7409,7 +7411,7 @@ MonoBehaviour:
   maxFeatureCount: 1000000
   boundingBoxSizeMeters: 300
   useDebugCoordinates: 0
-  debugLv95CoordinatesEast: 1232778
+  debugLv95CoordinatesEast: 1232844
   debugLv95CoordinatesNorth: 2704002
   locationDesiredAccuracyMeters: 5
   locationUpdateDistanceMeters: 0.5
@@ -7432,7 +7434,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: -3.9734, y: -0.000030517578}
+  m_AnchoredPosition: {x: -3.9734, y: -0.000061035156}
   m_SizeDelta: {x: 465.35, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &5217596384443372354
@@ -8192,7 +8194,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 6487152428338074285}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.94532144
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:

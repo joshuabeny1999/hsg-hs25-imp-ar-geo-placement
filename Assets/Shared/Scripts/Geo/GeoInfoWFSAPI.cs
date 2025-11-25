@@ -119,7 +119,7 @@ namespace Shared.Scripts.Geo
                 Debug.Log(
                     $"GeoInfo API: using debug LV95 coordinates {debugLv95CoordinatesNorth}, {debugLv95CoordinatesEast}");
 
-                ProjNetTransformCH.LV95ToWGS84(debugLv95CoordinatesEast, debugLv95CoordinatesNorth, out double lat,
+                ProjNetTransformCH.LV95ToWGS84(debugLv95CoordinatesNorth, debugLv95CoordinatesEast,out double lat,
                     out double lon);
                 yield return FetchProjectedFeatures(lat, lon, onCompleted);
                 yield break;

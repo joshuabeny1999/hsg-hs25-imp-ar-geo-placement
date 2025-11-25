@@ -11,6 +11,8 @@ using Shared.Scripts.Building;
 
 public class InfoPanelController : MonoBehaviour
 {
+    private Coroutine _buildRoutine;
+
     [Header("Wiring")]
     [SerializeField] private GameObject rootPanel;   // InfoPopup panel (visual)
     [SerializeField] private ScrollRect scrollRect;  // Scroll View
@@ -37,14 +39,38 @@ public class InfoPanelController : MonoBehaviour
 
     public void Open()
     {
-        if (!rootPanel) return;
-        rootPanel.SetActive(true);
-        if (autoFetchOnOpen) StartCoroutine(BuildAndShow());
+        // Panel sichtbar machen
+        if (rootPanel != null)
+        {
+            // need to be called twice, otherwise on first call the panel is not visible
+            rootPanel.SetActive(true);
+            rootPanel.SetActive(true);
+        }
+        else
+            gameObject.SetActive(true);
+
+        // alte Coroutine stoppen
+        if (_buildRoutine != null)
+        {
+            StopCoroutine(_buildRoutine);
+            _buildRoutine = null;
+        }
+
+        // Inhalt neu aufbauen
+        _buildRoutine = StartCoroutine(BuildAndShow());
     }
 
     public void Close()
     {
         if (!rootPanel) return;
+
+        // stop running build, if any
+        if (_buildRoutine != null)
+        {
+            StopCoroutine(_buildRoutine);
+            _buildRoutine = null;
+        }
+
         rootPanel.SetActive(false);
         ClearContent();
     }

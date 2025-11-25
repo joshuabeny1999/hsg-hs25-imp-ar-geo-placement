@@ -19,6 +19,7 @@ public class NearbyProjectsListController : MonoBehaviour
 
     [Header("UI")]
     [SerializeField] private Button refreshButton;
+    [SerializeField] private InfoPanelController infoPanelController;
 
     [SerializeField] private TMP_Dropdown distanceDropdown;
     [SerializeField] private Transform listContent;             // ScrollView/Viewport/Content
@@ -91,6 +92,9 @@ public class NearbyProjectsListController : MonoBehaviour
     {
         if (_isLoading) return;
         _isLoading = true;
+
+        if (geoObjectSpawner)
+            geoObjectSpawner.ClearAllBuildings();
 
         if (refreshButton) refreshButton.interactable = false;
         if (distanceDropdown) distanceDropdown.interactable = false;
@@ -353,6 +357,13 @@ public class NearbyProjectsListController : MonoBehaviour
             Longitude = lon
         };
         CurrentSelectedProjection.Building = context;
+
+        geoObjectSpawner.SelectBuilding(context);
+
+        if (infoPanelController != null)
+        {
+            infoPanelController.Open();
+        }
     }
 
     private IEnumerator SpawnWhenSpawnerReady(List<SelectedTargetContext> contexts)

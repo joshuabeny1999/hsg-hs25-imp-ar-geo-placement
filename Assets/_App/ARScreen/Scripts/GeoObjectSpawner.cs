@@ -43,9 +43,14 @@ public class GeoObjectSpawner : MonoBehaviour
     [SerializeField] public double north = 1250944.04;
     [SerializeField] private bool placeBuildingsAtZeroOrigin = false;
 
+    [Header("Selection")]
+    [SerializeField] private Material selectedMaterial;
 
+    private readonly Dictionary<string, GameObject> _buildingsByKey = new();
+    private Dictionary<Renderer, Material[]> _selectedOriginalMaterials;
 
-    private GameObject _spawnedObject;
+    private readonly List<GameObject> _spawnedBuildings = new();
+    private GameObject _selectedObject;
     private bool _spawnedIsBuilding;
     private double _altitudeMeters = 0.0;
 
@@ -253,24 +258,31 @@ public class GeoObjectSpawner : MonoBehaviour
         {
             Debug.Log($"[GeoObjectSpawner] Spawning {enriched.Count} buildings from enriched list...");
             
-            foreach(SelectedTargetContext projection in enriched)
+            foreach (SelectedTargetContext projection in enriched)
             {
-                
                 double elevation = (projection.ElevationMeters.HasValue && projection.ElevationMeters.Value > 0.0)
-                ? projection.ElevationMeters.Value
-                : _altitudeMeters;
+                    ? projection.ElevationMeters.Value
+                    : _altitudeMeters;
 
                 _altitudeMeters = elevation;
 
-                TrySpawnBuildingGeometry(projection.RawCoordinates, projection.Name, _altitudeMeters, out _);
+                if (TrySpawnBuildingGeometry(projection.RawCoordinates, projection.Name, _altitudeMeters, out var go))
+                {
+                    if (go != null)
+                    {
+                        _spawnedBuildings.Add(go);
+
+                        string key = MakeBuildingKey(projection);
+                        _buildingsByKey[key] = go;
+                    }
+                }
             }
-            
         }
 
         if (createCube)
         {
             var cube = SpawnCubeInternal();
-            _spawnedObject = cube;
+            _selectedObject = cube;
             _spawnedIsBuilding = false;
             _lastBuildingCoordinates = null;
             _lastBuildingName = null;
@@ -393,13 +405,6 @@ public class GeoObjectSpawner : MonoBehaviour
 
         }
 
-        _spawnedObject = buildingGo;
-        _spawnedIsBuilding = true;
-        _altitudeMeters = altitude;
-        _lastBuildingCoordinates = targetCoordinates;
-        _lastBuildingElevation = altitude;
-        _lastBuildingName = buildingNameToUse;
-
         VibrationService.TriggerLoadVibration(1000);
 
         return true;
@@ -449,22 +454,52 @@ public class GeoObjectSpawner : MonoBehaviour
         Debug.Log($"[GeoObjectSpawner] Reveal building after {frame} frame(s). Pos={go.transform.position}");
     }
 
-    private void RespawnLastBuilding()
+    private void RespawnSelectedBuilding()
     {
         if (string.IsNullOrWhiteSpace(_lastBuildingCoordinates))
             return;
 
         if (!TrySpawnBuildingGeometry(_lastBuildingCoordinates, _lastBuildingName, _altitudeMeters, out _))
         {
-            _spawnedObject = null;
+            _selectedObject = null;
             _spawnedIsBuilding = false;
         }
+    }
+
+    public void ClearAllBuildings()
+    {
+        // Materialien der Selection zurücksetzen
+        if (_selectedObject != null && _selectedOriginalMaterials != null)
+        {
+            foreach (var kvp in _selectedOriginalMaterials)
+            {
+                if (kvp.Key != null)
+                    kvp.Key.materials = kvp.Value;
+            }
+        }
+
+        _selectedOriginalMaterials = null;
+        _selectedObject = null;
+
+        foreach (var go in _spawnedBuildings)
+        {
+            if (go != null)
+                Destroy(go);
+        }
+
+        _spawnedBuildings.Clear();
+        _buildingsByKey.Clear();
+
+        _spawnedIsBuilding = false;
+        _lastBuildingCoordinates = null;
+        _lastBuildingName = null;
+        _lastBuildingElevation = 0.0;
     }
 
     public void SetObjectHeightMeters(float h)
     {
         objectHeightMeters = Mathf.Max(1f, h);
-        if (_spawnedObject == null)
+        if (_selectedObject == null)
             return;
 
         if (_spawnedIsBuilding)
@@ -474,25 +509,25 @@ public class GeoObjectSpawner : MonoBehaviour
                 buildingFactory.SetExtrusionHeight(objectHeightMeters);
             }
 
-            var toDestroy = _spawnedObject;
-            _spawnedObject = null;
+            var toDestroy = _selectedObject;
+            _selectedObject = null;
             if (toDestroy != null)
             {
                 Destroy(toDestroy);
             }
 
-            RespawnLastBuilding();
+            RespawnSelectedBuilding();
             Debug.Log("[GeoObjectSpawner] Building height set to " + objectHeightMeters + " meters.");
             return;
         }
 
-        var s = _spawnedObject.transform.localScale;
+        var s = _selectedObject.transform.localScale;
         s.y = objectHeightMeters;
-        _spawnedObject.transform.localScale = s;
+        _selectedObject.transform.localScale = s;
 
         Debug.Log("[GeoObjectSpawner] Cube height set to " + objectHeightMeters + " meters.");
 
-        var bb = _spawnedObject.transform.Find("Billboard");
+        var bb = _selectedObject.transform.Find("Billboard");
         if (bb != null) bb.localPosition = new Vector3(0f, objectHeightMeters + 0.5f, 0f);
     }
 
@@ -510,7 +545,7 @@ public class GeoObjectSpawner : MonoBehaviour
     // clamp to >= 0 meters
     _altitudeMeters = System.Math.Max(0.0, _altitudeMeters);
 
-        if (_spawnedObject == null)
+        if (_selectedObject == null)
             return;
 
         if (_spawnedIsBuilding)
@@ -518,14 +553,14 @@ public class GeoObjectSpawner : MonoBehaviour
             // Recreate the building using the new altitude
             if (buildingFactory != null)
             {
-                var toDestroy = _spawnedObject;
-                _spawnedObject = null;
+                var toDestroy = _selectedObject;
+                _selectedObject = null;
                 if (toDestroy != null)
                 {
                     Destroy(toDestroy);
                 }
 
-                RespawnLastBuilding();
+                RespawnSelectedBuilding();
                 Debug.Log("[GeoObjectSpawner] Building altitude set to " + _altitudeMeters + " meters.");
             }
 
@@ -536,7 +571,7 @@ public class GeoObjectSpawner : MonoBehaviour
         if (debugSpawnAtProvidedCoordinates)
         {
             // In debug mode the cube is parented to this transform at Vector3.zero; move it locally along Y
-            _spawnedObject.transform.localPosition = new Vector3(0f, (float)_altitudeMeters, 0f);
+            _selectedObject.transform.localPosition = new Vector3(0f, (float)_altitudeMeters, 0f);
             Debug.Log($"[GeoObjectSpawner] Debug cube altitude set to {_altitudeMeters}m (local Y moved).");
             return;
         }
@@ -545,8 +580,87 @@ public class GeoObjectSpawner : MonoBehaviour
         if (positioningHelper != null)
         {
             ProjNetTransformCH.LV95ToWGS84(east, north, out double lat, out double lon);
-            positioningHelper.AddOrUpdateObject(_spawnedObject, lat, lon, _altitudeMeters, Quaternion.identity);
+            positioningHelper.AddOrUpdateObject(_selectedObject, lat, lon, _altitudeMeters, Quaternion.identity);
             Debug.Log("[GeoObjectSpawner] Cube altitude set to " + _altitudeMeters + " meters.");
         }
+    }
+
+    public void SelectBuilding(SelectedTargetContext ctx)
+    {
+        if (ctx == null)
+            return;
+
+        _spawnedIsBuilding       = true;
+        _altitudeMeters          = ctx.ElevationMeters ?? _altitudeMeters;
+        _lastBuildingCoordinates = ctx.RawCoordinates;
+        _lastBuildingName        = ctx.Name;
+        _lastBuildingElevation   = _altitudeMeters;
+
+        string key = MakeBuildingKey(ctx);
+        SelectBuildingByKey(key);
+    }
+
+    private void SelectBuildingByKey(string key)
+    {
+        if (string.IsNullOrEmpty(key))
+            return;
+
+        // Reset previous selection
+        if (_selectedObject != null && _selectedOriginalMaterials != null)
+        {
+            Debug.Log("[GeoObjectSpawner] Restoring original materials of previous selected building.");
+            foreach (var kvp in _selectedOriginalMaterials)
+            {
+                if (kvp.Key != null)
+                    kvp.Key.materials = kvp.Value;
+            }
+        }
+
+        _selectedObject = null;
+        _selectedOriginalMaterials = null;
+
+        if (!_buildingsByKey.TryGetValue(key, out var go) || go == null)
+        {
+            Debug.LogWarning($"[GeoObjectSpawner] No spawned building found for key={key}");
+            return;
+        }
+
+        _selectedObject = go;
+
+        if (selectedMaterial == null)
+            return;
+
+        _selectedOriginalMaterials = new Dictionary<Renderer, Material[]>();
+        var renderers = go.GetComponentsInChildren<Renderer>(true);
+
+        foreach (var r in renderers)
+        {
+            if (r == null) continue;
+
+            // Save original
+            _selectedOriginalMaterials[r] = r.materials;
+
+            // replace with selectedMat
+            var count = r.materials.Length;
+            var mats = new Material[count];
+            for (int i = 0; i < count; i++)
+                mats[i] = selectedMaterial;
+
+            r.materials = mats;
+        }
+        Debug.Log("[GeoObjectSpawner] Selected building with key=" + key);
+    }
+
+    private string MakeBuildingKey(SelectedTargetContext ctx)
+    {
+        if (!string.IsNullOrEmpty(ctx.Egid))
+            return ctx.Egid; // Falls vorhanden, immer nutzen
+
+        // Fallback → RawCoordinates (100 % eindeutig)
+        if (!string.IsNullOrEmpty(ctx.RawCoordinates))
+            return ctx.RawCoordinates.GetHashCode().ToString();
+
+        // Worst-case → Lat/Lon kombinieren
+        return (ctx.Latitude.ToString("F6") + "_" + ctx.Longitude.ToString("F6")).GetHashCode().ToString();
     }
 }
