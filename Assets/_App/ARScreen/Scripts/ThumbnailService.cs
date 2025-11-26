@@ -69,7 +69,7 @@ using Shared.Scripts.Geo;
             _stage.SetParent(rig.transform, false);
             _stage.gameObject.layer = previewLayer;
         }
-        
+
         /// <summary> Public API to request a thumbnail. </summary>
         public void RequestThumbnail(ProjectedBuilding building, int size, Action<Texture2D> onReady)
         {
