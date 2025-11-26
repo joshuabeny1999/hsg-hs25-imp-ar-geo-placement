@@ -5,8 +5,8 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
-    path: Assets/_App/EntryScreen/Scenes/Home.unity
+  - enabled: 0
+    path: Assets/_App/ARScreen/Scenes/Home.unity
     guid: 73c2b387b4a0b477ba5039a07f4071a0
   - enabled: 1
     path: Assets/_App/ARScreen/Scenes/GeoPlacementScene.unity

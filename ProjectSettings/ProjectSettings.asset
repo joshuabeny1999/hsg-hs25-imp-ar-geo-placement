@@ -272,8 +272,7 @@ PlayerSettings:
   AndroidTargetArchitectures: 3
   AndroidSplashScreenScale: 0
   androidSplashScreen: {fileID: 0}
-  AndroidKeystoreName: "/Users/joshua/Library/CloudStorage/SynologyDrive-Joshua/Schule,
-    Ausbildung und Weiterbildungen/Universita\u0308t St.Gallen HSG/Module/03_HS2025/IMP_2025/unity-android.keystore"
+  AndroidKeystoreName: D:/MasterStudium/S3_IMP/unity-android.keystore
   AndroidKeyaliasName: releasekey
   AndroidEnableArmv9SecurityFeatures: 0
   AndroidEnableArm64MTE: 0

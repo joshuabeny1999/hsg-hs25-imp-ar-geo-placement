@@ -11,6 +11,8 @@ using Shared.Scripts.Building;
 
 public class InfoPanelController : MonoBehaviour
 {
+    private Coroutine _buildRoutine;
+
     [Header("Wiring")]
     [SerializeField] private GameObject rootPanel;   // InfoPopup panel (visual)
     [SerializeField] private ScrollRect scrollRect;  // Scroll View
@@ -23,7 +25,6 @@ public class InfoPanelController : MonoBehaviour
     [SerializeField] private GeoInfoWMSAPI wmsApi;   // optional, for Gebäudestatus (WMS)
 
     [Header("Options")]
-    [SerializeField] private bool autoFetchOnOpen = true;
     [SerializeField] private string flaechenblattTyp = "L";  // usually "L"
     [SerializeField] private double eastOverride = 0;        // optional for debugging
     [SerializeField] private double northOverride = 0;
@@ -37,14 +38,38 @@ public class InfoPanelController : MonoBehaviour
 
     public void Open()
     {
-        if (!rootPanel) return;
-        rootPanel.SetActive(true);
-        if (autoFetchOnOpen) StartCoroutine(BuildAndShow());
+        // Panel sichtbar machen
+        if (rootPanel != null)
+        {
+            // need to be called twice, otherwise on first call the panel is not visible
+            rootPanel.SetActive(true);
+            rootPanel.SetActive(true);
+        }
+        else
+            gameObject.SetActive(true);
+
+        // alte Coroutine stoppen
+        if (_buildRoutine != null)
+        {
+            StopCoroutine(_buildRoutine);
+            _buildRoutine = null;
+        }
+
+        // Inhalt neu aufbauen
+        _buildRoutine = StartCoroutine(BuildAndShow());
     }
 
     public void Close()
     {
         if (!rootPanel) return;
+
+        // stop running build, if any
+        if (_buildRoutine != null)
+        {
+            StopCoroutine(_buildRoutine);
+            _buildRoutine = null;
+        }
+
         rootPanel.SetActive(false);
         ClearContent();
     }
@@ -65,23 +90,23 @@ public class InfoPanelController : MonoBehaviour
         AddTitle("Allgemein");
 
         // rows
-        AddRow("Name", Safe(SelectedTargetContext.Name));
-        AddRow("EGID", Safe(SelectedTargetContext.Egid));
-        AddRow("Latitude", SelectedTargetContext.Latitude.ToString("F6", CultureInfo.InvariantCulture));
-        AddRow("Longitude", SelectedTargetContext.Longitude.ToString("F6", CultureInfo.InvariantCulture));
+        AddRow("Name", Safe(CurrentSelectedProjection.Building.Name));
+        AddRow("EGID", Safe(CurrentSelectedProjection.Building.Egid));
+        AddRow("Latitude", CurrentSelectedProjection.Building.Latitude.ToString("F6", CultureInfo.InvariantCulture));
+        AddRow("Longitude", CurrentSelectedProjection.Building.Longitude.ToString("F6", CultureInfo.InvariantCulture));
 
         // LV95 aus Polygoncentroid oder WGS84 ableiten
         double east = 0, north = 0;
         bool haveEN = false;
 
-        if (!string.IsNullOrWhiteSpace(SelectedTargetContext.RawCoordinates) &&
-            BuildingGeometryUtils.TryCentroidLV95(SelectedTargetContext.RawCoordinates, out var eC, out var nC))
+        if (!string.IsNullOrWhiteSpace(CurrentSelectedProjection.Building.RawCoordinates) &&
+            BuildingGeometryUtils.TryCentroidLV95(CurrentSelectedProjection.Building.RawCoordinates, out var eC, out var nC))
         {
             east = eC; north = nC; haveEN = true;
         }
-        else if (SelectedTargetContext.Latitude != 0 || SelectedTargetContext.Longitude != 0)
+        else if (CurrentSelectedProjection.Building.Latitude != 0 || CurrentSelectedProjection.Building.Longitude != 0)
         {
-            ProjNetTransformCH.WGS84ToLV95(SelectedTargetContext.Latitude, SelectedTargetContext.Longitude, out east, out north);
+            ProjNetTransformCH.WGS84ToLV95(CurrentSelectedProjection.Building.Latitude, CurrentSelectedProjection.Building.Longitude, out east, out north);
             haveEN = true;
         }
 
@@ -93,8 +118,8 @@ public class InfoPanelController : MonoBehaviour
             AddRow("North (LV95)", north.ToString("F2", CultureInfo.InvariantCulture));
         }
 
-        if (SelectedTargetContext.ElevationMeters.HasValue)
-            AddRow("Geländehöhe (m.ü.M.)", SelectedTargetContext.ElevationMeters.Value.ToString("F2", CultureInfo.InvariantCulture));
+        if (CurrentSelectedProjection.Building.ElevationMeters.HasValue)
+            AddRow("Geländehöhe (m.ü.M.)", CurrentSelectedProjection.Building.ElevationMeters.Value.ToString("F2", CultureInfo.InvariantCulture));
 
         // -------- 2) Stammdaten (liefert BFS/LiegNr/EGRID für Flächenblatt)
         GeoPortalStammdatenResponse stammdaten = null;

@@ -22,6 +22,7 @@ public class SliderBuildingAltitude : MonoBehaviour
         UpdateLabel(currentAltitude);
 
         slider.onValueChanged.AddListener(OnHeightChanged);
+        spawner.OnSelectionChanged += OnSelectionChanged;
         _listenerRegistered = true;
     }
 
@@ -52,4 +53,11 @@ public class SliderBuildingAltitude : MonoBehaviour
     {
         if (valueText != null) valueText.text = $"{a:+0.##;-0.##;+0.##} m";
     }
+
+    void OnSelectionChanged(bool hasSelection)
+    {
+        slider.interactable = hasSelection;
+        if (valueText != null) valueText.enabled = hasSelection;
+    }
+
 }

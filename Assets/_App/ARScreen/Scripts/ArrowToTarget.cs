@@ -7,9 +7,6 @@ using UnityEngine.UI;
 
 public class ArrowToTarget : MonoBehaviour
 {
-    [Header("References")]
-    public GeoObjectSpawner geoSpawner; // optional fallback
-
     [Header("Settings")]
     public float hideWhenCloserThanMeters = 30f;
 
@@ -27,8 +24,6 @@ public class ArrowToTarget : MonoBehaviour
             return;
         }
 
-        if (!geoSpawner) geoSpawner = FindFirstObjectByType<GeoObjectSpawner>();
-
         Input.compass.enabled = true;
         if (Input.location.isEnabledByUser) Input.location.Start(1f, 0.1f);
     }
@@ -39,16 +34,11 @@ public class ArrowToTarget : MonoBehaviour
 
         // 1) Preferred: target from SelectedTargetContext (lat/lon)
         double targetLat = 0, targetLon = 0;
-        bool hasContextTarget = SelectedTargetContext.Latitude != 0 || SelectedTargetContext.Longitude != 0;
+        bool hasContextTarget = CurrentSelectedProjection.Building.Latitude != 0 || CurrentSelectedProjection.Building.Longitude != 0;
         if (hasContextTarget)
         {
-            targetLat = SelectedTargetContext.Latitude;
-            targetLon = SelectedTargetContext.Longitude;
-        }
-        else if (geoSpawner != null)
-        {
-            // 2) Fallback to spawner’s LV95
-            ProjNetTransformCH.LV95ToWGS84(geoSpawner.east, geoSpawner.north, out targetLat, out targetLon);
+            targetLat = CurrentSelectedProjection.Building.Latitude;
+            targetLon = CurrentSelectedProjection.Building.Longitude;
         }
         else
         {

@@ -20,6 +20,8 @@ public class UIHeightSlider : MonoBehaviour
             slider.value = spawner.objectHeightMeters;
             slider.onValueChanged.AddListener(OnHeightChanged);
             UpdateLabel(slider.value);
+
+            spawner.OnSelectionChanged += OnSelectionChanged;
         }
     }
 
@@ -35,5 +37,11 @@ public class UIHeightSlider : MonoBehaviour
     void UpdateLabel(float h)
     {
         if (valueText != null) valueText.text = $"{h:0.0} m";
+    }
+
+    void OnSelectionChanged(bool hasSelection)
+    {
+        slider.interactable = hasSelection;
+        if (valueText != null) valueText.enabled = hasSelection;
     }
 }

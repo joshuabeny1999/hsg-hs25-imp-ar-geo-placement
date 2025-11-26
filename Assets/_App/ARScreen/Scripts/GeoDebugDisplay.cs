@@ -114,14 +114,14 @@ public class GeoDebugDisplay : MonoBehaviour
 
         // decide target: only use the selected context (no cube fallback)
         double targetLat = 0, targetLon = 0;
-        bool hasSelected = (SelectedTargetContext.Latitude != 0 || SelectedTargetContext.Longitude != 0)
-                           || !string.IsNullOrEmpty(SelectedTargetContext.Egid)
-                           || !string.IsNullOrEmpty(SelectedTargetContext.RawCoordinates);
+        bool hasSelected = (CurrentSelectedProjection.Building.Latitude != 0 || CurrentSelectedProjection.Building.Longitude != 0)
+                           || !string.IsNullOrEmpty(CurrentSelectedProjection.Building.Egid)
+                           || !string.IsNullOrEmpty(CurrentSelectedProjection.Building.RawCoordinates);
 
         if (hasSelected)
         {
-            targetLat = SelectedTargetContext.Latitude;
-            targetLon = SelectedTargetContext.Longitude;
+            targetLat = CurrentSelectedProjection.Building.Latitude;
+            targetLon = CurrentSelectedProjection.Building.Longitude;
         }
 
 // Distance & proximity color bands
@@ -176,13 +176,13 @@ public class GeoDebugDisplay : MonoBehaviour
         if (hasSelected)
         {
             // trim raw coordinates just so HUD stays readable
-            string raw = SelectedTargetContext.RawCoordinates;
+            string raw = CurrentSelectedProjection.Building.RawCoordinates;
             if (!string.IsNullOrEmpty(raw) && raw.Length > 80) raw = raw.Substring(0, 80) + "…";
 
             return
                 $"\n\n<b>SELECTED BUILDING</b>\n" +
-                $"EGID: {SelectedTargetContext.Egid}\n" +
-                $"Name: {SelectedTargetContext.Name}\n" +
+                $"EGID: {CurrentSelectedProjection.Building.Egid}\n" +
+                $"Name: {CurrentSelectedProjection.Building.Name}\n" +
                 $"Lat: {targetLat:F8}\n" +
                 $"Lon: {targetLon:F8}\n" +
                 (string.IsNullOrEmpty(raw) ? "" : $"Coords: {raw}");
@@ -204,11 +204,11 @@ public class GeoDebugDisplay : MonoBehaviour
     // Always reflect exactly what's inside SelectedTargetContext (no parsing, no trimming)
     private string SelectedContextRawBlock()
     {
-        string egid = SelectedTargetContext.Egid;
-        string name = SelectedTargetContext.Name;
-        string raw = SelectedTargetContext.RawCoordinates;
-        double latRaw = SelectedTargetContext.Latitude;
-        double lonRaw = SelectedTargetContext.Longitude;
+        string egid = CurrentSelectedProjection.Building.Egid;
+        string name = CurrentSelectedProjection.Building.Name;
+        string raw = CurrentSelectedProjection.Building.RawCoordinates;
+        double latRaw = CurrentSelectedProjection.Building.Latitude;
+        double lonRaw = CurrentSelectedProjection.Building.Longitude;
 
         bool any = !string.IsNullOrEmpty(egid)
                    || !string.IsNullOrEmpty(name)
