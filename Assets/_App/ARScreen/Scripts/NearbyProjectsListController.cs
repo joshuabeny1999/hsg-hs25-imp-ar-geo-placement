@@ -26,7 +26,7 @@ public class NearbyProjectsListController : MonoBehaviour
     [SerializeField] private Transform listContent;             // ScrollView/Viewport/Content
     [SerializeField] private BuildingListItemView itemPrefab;   // Your row prefab
 
-    [SerializeField] private Image mapImage;
+    [SerializeField] private RawImage mapImage;
 
     [Header("Status Labels")]
     [SerializeField] private TMP_Text loadingText;
@@ -134,16 +134,16 @@ public class NearbyProjectsListController : MonoBehaviour
             switch (dropdownValue)
             {
                 case 250:
-                    scale = 1000;
-                    break;
-                case 500:
                     scale = 1500;
                     break;
+                case 500:
+                    scale = 3000;
+                    break;
                 case 750:
-                    scale = 2000;
+                    scale = 4500;
                     break;
                 case 1000:
-                    scale = 2500;
+                    scale = 6000;
                     break;
                 default:
                     scale = 1000; 
