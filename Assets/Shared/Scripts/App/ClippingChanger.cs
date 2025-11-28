@@ -55,8 +55,17 @@ public class ClippingChanger : MonoBehaviour
 
     private void ApplyClipDelta(float delta)
     {
-        targetCamera.nearClipPlane = Mathf.Max(MinNearClip, targetCamera.nearClipPlane + delta);
+        float originalClip = targetCamera.nearClipPlane;
+        float adjustedClip = Mathf.Max(MinNearClip, originalClip + delta);
+
+        if (Mathf.Approximately(originalClip, adjustedClip))
+        {
+            return;
+        }
+
+        targetCamera.nearClipPlane = adjustedClip;
         Debug.Log($"ClippingChanger: Near clip -> {targetCamera.nearClipPlane:F2}");
+        VibrationService.TriggerLoadVibration();
     }
 
 #if ENABLE_INPUT_SYSTEM
