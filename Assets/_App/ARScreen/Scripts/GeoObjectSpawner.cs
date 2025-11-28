@@ -32,7 +32,8 @@ public class GeoObjectSpawner : MonoBehaviour
     [SerializeField] private ARWorldPositioningManager wpsManager;
 
     [Header("Selection")]
-    [SerializeField] private Material selectedMaterial;
+    [SerializeField]
+    private Color selectedColor = Color.cyan;
 
     private readonly Dictionary<string, GameObject> _buildingsByKey = new();
 
@@ -40,8 +41,8 @@ public class GeoObjectSpawner : MonoBehaviour
 
     public System.Action<bool> OnSelectionChanged;    private GameObject _selectedObject;
     private string _selectedKey;
-    private Dictionary<Renderer, Material[]> _selectedOriginalMaterials;
-
+    private readonly string COLOR_PROPERTY = "_Color";
+    private Dictionary<Renderer, Color> _selectedOriginalColors;
     private double _altitudeMeters = 0.0;
 
     // WPS / Altitude Status
@@ -237,12 +238,18 @@ public class GeoObjectSpawner : MonoBehaviour
                 if (go == null) continue;
 
                 var key = MakeBuildingKey(ctx);
+
+                if (_buildingsByKey.TryGetValue(key, out var existing) && existing != null)
+                {
+                    Debug.LogWarning($"[GeoObjectSpawner] Overwriting existing building for key={key}, destroying old instance.");
+                    Destroy(existing);
+                }
+
                 _buildingsByKey[key] = go;
                 _contextsByKey[key] = ctx;
             }
         }
     }
-
     private bool TrySpawnBuildingFromContext(SelectedTargetContext ctx, double elevation, out GameObject buildingGo)
     {
         return TrySpawnBuildingGeometry(ctx.RawCoordinates, ctx.Name, elevation, out buildingGo);
@@ -309,7 +316,6 @@ public class GeoObjectSpawner : MonoBehaviour
 
     public void ClearAllBuildings()
     {
-        RestoreSelectionMaterials();
 
         foreach (var kvp in _buildingsByKey)
         {
@@ -322,7 +328,6 @@ public class GeoObjectSpawner : MonoBehaviour
 
         _selectedObject = null;
         _selectedKey = null;
-        _selectedOriginalMaterials = null;
         OnSelectionChanged?.Invoke(false);
     }
 
@@ -345,10 +350,11 @@ public class GeoObjectSpawner : MonoBehaviour
         if (string.IsNullOrEmpty(key))
             return;
 
-        RestoreSelectionMaterials();
+        RestoreSelectionColors();
+
         _selectedObject = null;
         _selectedKey = null;
-        _selectedOriginalMaterials = null;
+        _selectedOriginalColors = null;
 
         if (!_buildingsByKey.TryGetValue(key, out var go) || go == null)
         {
@@ -359,38 +365,44 @@ public class GeoObjectSpawner : MonoBehaviour
         _selectedObject = go;
         _selectedKey = key;
 
-        if (selectedMaterial == null)
-            return;
+        _selectedOriginalColors = new Dictionary<Renderer, Color>();
 
-        _selectedOriginalMaterials = new Dictionary<Renderer, Material[]>();
         var renderers = go.GetComponentsInChildren<Renderer>(true);
-
         foreach (var r in renderers)
         {
             if (r == null) continue;
 
-            _selectedOriginalMaterials[r] = r.materials;
+            var originalColor = r.sharedMaterial.HasProperty(COLOR_PROPERTY)
+                ? r.sharedMaterial.GetColor(COLOR_PROPERTY)
+                : Color.white;
 
-            int count = r.materials.Length;
-            var mats = new Material[count];
-            for (int i = 0; i < count; i++)
-                mats[i] = selectedMaterial;
+            _selectedOriginalColors[r] = originalColor;
 
-            r.materials = mats;
+            var block = new MaterialPropertyBlock();
+            r.GetPropertyBlock(block);
+            block.SetColor(COLOR_PROPERTY, selectedColor);
+            r.SetPropertyBlock(block);
         }
 
         Debug.Log("[GeoObjectSpawner] Selected building with key=" + key);
     }
 
-    private void RestoreSelectionMaterials()
+    private void RestoreSelectionColors()
     {
-        if (_selectedObject == null || _selectedOriginalMaterials == null)
+        if (_selectedObject == null || _selectedOriginalColors == null)
             return;
 
-        foreach (var kvp in _selectedOriginalMaterials)
+        foreach (var kvp in _selectedOriginalColors)
         {
-            if (kvp.Key != null)
-                kvp.Key.materials = kvp.Value;
+            var r = kvp.Key;
+            if (r == null) continue;
+
+            var color = kvp.Value;
+
+            var block = new MaterialPropertyBlock();
+            r.GetPropertyBlock(block);
+            block.SetColor(COLOR_PROPERTY, color);
+            r.SetPropertyBlock(block);
         }
     }
 
@@ -447,8 +459,6 @@ public class GeoObjectSpawner : MonoBehaviour
         if (string.IsNullOrEmpty(_selectedKey))
             return;
 
-        RestoreSelectionMaterials();
-
         if (_buildingsByKey.TryGetValue(_selectedKey, out var oldGo) && oldGo != null)
             Destroy(oldGo);
 
@@ -465,7 +475,6 @@ public class GeoObjectSpawner : MonoBehaviour
         {
             _selectedObject = null;
             _selectedKey = null;
-            _selectedOriginalMaterials = null;
         }
     }
 }
