@@ -39,22 +39,35 @@ using Shared.Scripts.Geo;
             Instance = this;
             DontDestroyOnLoad(gameObject);
 
+            // Dedicated layer for thumbnails
+            int previewLayer = LayerMask.NameToLayer("ThumbnailPreview");
+
             // Build the rig
             var rig = Instantiate(previewRigPrefab);
             rig.gameObject.hideFlags = HideFlags.HideAndDontSave;
-            rig.layer = LayerMask.NameToLayer("ThumbnailPreview");
+            rig.layer = previewLayer;
+
+            // move rig far outside view frustum as extra safety
+            rig.transform.position = new Vector3(0f, -10000f, 0f);
+
+            // put all children on preview layer
+            foreach (Transform t in rig.GetComponentsInChildren<Transform>(true))
+                t.gameObject.layer = previewLayer;
 
             _cam = rig.transform.Find("PreviewCamera").GetComponent<Camera>();
             _cam.clearFlags = CameraClearFlags.SolidColor;
             _cam.backgroundColor = new Color(0, 0, 0, 0);
             _cam.enabled = false;
-            
+
+            // Thumbnail camera renders ONLY the preview layer
+            _cam.cullingMask = 1 << previewLayer;
+
             _light = rig.GetComponentInChildren<Light>(true);
 
             // Stage = an empty child used as parent for temporary geometry
             _stage = new GameObject("Stage").transform;
             _stage.SetParent(rig.transform, false);
-            _stage.gameObject.layer = LayerMask.NameToLayer("ThumbnailPreview");
+            _stage.gameObject.layer = previewLayer;
         }
 
         /// <summary> Public API to request a thumbnail. </summary>

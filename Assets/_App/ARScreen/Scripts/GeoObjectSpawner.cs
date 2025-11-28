@@ -125,16 +125,34 @@ public class GeoObjectSpawner : MonoBehaviour
 
         _initializing = true;
 
+
         if (wpsManager != null)
         {
+            float t = 0f;
+            const float timeout = 30f;
+            Debug.Log("[GeoObjectSpawner] Waiting for WPS to become available...");
+            while (!wpsManager.IsAvailable && t < timeout)
+            {
+                t += Time.deltaTime;
+                if ((int)t % 5 == 0 && t > 0)
+                    Debug.Log($"[GeoObjectSpawner] Still waiting for WPS... ({t:F0}s/{timeout}s)");
+                yield return null;
+            }
+
             _wpsReady = wpsManager.IsAvailable;
+            Debug.Log($"[GeoObjectSpawner] WPS available: {_wpsReady}");
 
             if (!_wpsReady)
-                Debug.LogError("[GeoObjectSpawner] WPS not ready after timeout. Buildings cannot be positioned in AR.");
-        }
-        else
+                Debug.LogError("[GeoObjectSpawner] WPS not ready after timeout!");
+        } else
         {
+#if UNITY_EDITOR
             _wpsReady = true;
+            Debug.LogWarning("[GeoObjectSpawner] No WPS Manager found (Editor). Using fallback.");
+#else
+            _wpsReady = false;
+            Debug.LogError("[GeoObjectSpawner] No WPS Manager found! Cannot position buildings.");
+#endif
         }
 
         yield return StartCoroutine(FetchAltitudeFromDevice());
@@ -261,66 +279,28 @@ public class GeoObjectSpawner : MonoBehaviour
 
         var renderers = buildingGo.GetComponentsInChildren<Renderer>(true);
         foreach (var r in renderers)
-            r.enabled = false;
-
-        if (!_wpsReady || positioningHelper == null)
-        {
-            Debug.LogWarning($"[GeoObjectSpawner] WPS not ready or no positioningHelper, destroying building '{buildingNameToUse}'.");
-            Destroy(buildingGo);
-            return false;
-        }
-
-        StartCoroutine(PositionAndRevealBuilding(
-            buildingGo,
-            building.Latitude,
-            building.Longitude,
-            building.AltitudeMeters,
-            renderers));
-
-        VibrationService.TriggerLoadVibration(1000);
-        return true;
-    }
-
-    private IEnumerator PositionAndRevealBuilding(
-        GameObject go,
-        double lat,
-        double lon,
-        double alt,
-        Renderer[] renderers)
-    {
-        if (go == null || positioningHelper == null)
-            yield break;
-
-        go.transform.position = new Vector3(0f, -10000f, 0f);
-
-        positioningHelper.AddOrUpdateObject(go, lat, lon, alt, Quaternion.identity);
-
-        const int maxFrames = 30;
-        int frame = 0;
-        while (go != null && frame < maxFrames)
-        {
-            var pos = go.transform.position;
-
-            bool hasValidPos =
-                pos != Vector3.zero &&
-                pos.y > -9999f &&
-                !float.IsNaN(pos.x) && !float.IsNaN(pos.y) && !float.IsNaN(pos.z) &&
-                !float.IsInfinity(pos.x) && !float.IsInfinity(pos.y) && !float.IsInfinity(pos.z);
-
-            if (hasValidPos)
-                break;
-
-            frame++;
-            yield return null;
-        }
-
-        foreach (var r in renderers)
         {
             if (r != null)
                 r.enabled = true;
         }
 
-        Debug.Log($"[GeoObjectSpawner] Reveal building after {frame} frame(s). Pos={go.transform.position}");
+        if (!_wpsReady || positioningHelper == null)
+        {
+            Debug.LogWarning($"[GeoObjectSpawner] WPS not ready or no positioningHelper, building '{buildingNameToUse}' stays at factory origin.");
+            buildingGo.transform.SetParent(transform, false);
+            VibrationService.TriggerLoadVibration(1000);
+            return true;
+        }
+
+        positioningHelper.AddOrUpdateObject(
+            buildingGo,
+            building.Latitude,
+            building.Longitude,
+            building.AltitudeMeters,
+            Quaternion.identity);
+
+        VibrationService.TriggerLoadVibration(1000);
+        return true;
     }
 
     // --------------------------------------------------------

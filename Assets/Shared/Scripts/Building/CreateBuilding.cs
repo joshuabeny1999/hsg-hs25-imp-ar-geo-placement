@@ -82,10 +82,7 @@ namespace Shared.Scripts.Building
 
             var collider = buildingGo.AddComponent<MeshCollider>();
             collider.sharedMesh = mesh;
-
-            // Disable renderer by default.
-            meshRenderer.enabled = false;
-
+            
             buildingGo.transform.localScale = Vector3.one;
 
             Debug.Log(
