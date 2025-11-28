@@ -8,13 +8,14 @@ public class GeoInfoWFSMapAPI : MonoBehaviour
 {
     [Header("UI Settings")]
     [Tooltip("Assign the Image component from your Canvas here")]
-    public Image targetCanvasImage;
+    public RawImage targetCanvasImage;
 
     [Header("Debug Settings")]
     [SerializeField, Tooltip("Use manual LV95 coordinates instead of the device GPS (for in-editor testing).")]
     private bool useDebugCoordinates = false;
     [SerializeField] private double debugLv95CoordinatesEast = 2743009.24f;
     [SerializeField] private double debugLv95CoordinatesNorth = 1252728.11f;
+    [SerializeField] private int debugScale = 3500;
 
     // Base URL from your documentation
     private const string BaseUrl = "https://www.geoportal.ch/ch/map/40";
@@ -36,6 +37,7 @@ public class GeoInfoWFSMapAPI : MonoBehaviour
         {
             lv95East = debugLv95CoordinatesEast;
             lv95North = debugLv95CoordinatesNorth;
+            scale = debugScale;
         }
         else
         {
@@ -50,7 +52,7 @@ public class GeoInfoWFSMapAPI : MonoBehaviour
 
         Debug.Log("GeoInfoWFSMapAPI : Requesting Map: " + url);
 
-        using (UnityWebRequest uwr = UnityWebRequestTexture.GetTexture(url))
+        using (UnityWebRequest uwr = UnityWebRequestTexture.GetTexture(url, true))
         {
             yield return uwr.SendWebRequest();
 
@@ -62,18 +64,12 @@ public class GeoInfoWFSMapAPI : MonoBehaviour
             {
                 Texture2D texture = DownloadHandlerTexture.GetContent(uwr);
 
+                // Yield one frame so decompression finishes off-thread before updating UI
+                yield return null;
+
                 if (targetCanvasImage != null)
                 {
-                    Sprite mapSprite = Sprite.Create(
-                        texture, 
-                        new Rect(0, 0, texture.width, texture.height), 
-                        new Vector2(0.5f, 0.5f)
-                    );
-
-                    targetCanvasImage.sprite = mapSprite;
-                    targetCanvasImage.type = Image.Type.Simple;
-                    targetCanvasImage.preserveAspect = true;
-                    
+                    targetCanvasImage.texture = texture;
                     targetCanvasImage.transform.parent.gameObject.SetActive(true);
                 }
             }
