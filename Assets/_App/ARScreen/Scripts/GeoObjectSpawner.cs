@@ -20,11 +20,6 @@ public class GeoObjectSpawner : MonoBehaviour
     [Min(1f)]
     public float objectHeightMeters = 5f;
 
-    [Header("Building Geometry (optional manuell)")]
-    [Tooltip("Wenn true, wird die Geometrie aus dem Textfeld statt aus SelectedTargetContext gelesen.")]
-    [SerializeField] private bool useBuildingGeometryFromTextField = false;
-    [SerializeField, TextArea(4, 10)] private string buildingCoordinatesLv95;
-    [SerializeField] private string buildingName = "Manual";
     [SerializeField] private CreateBuilding buildingFactory;
 
     [Header("WPS / AR")]
@@ -108,7 +103,7 @@ public class GeoObjectSpawner : MonoBehaviour
         }
 
         bool hasPending = _pendingContexts != null && _pendingContexts.Count > 0;
-        if (!hasPending && !useBuildingGeometryFromTextField)
+        if (!hasPending)
             return;
 
         Debug.Log($"[GeoObjectSpawner] READY - spawning {_pendingContexts?.Count ?? 0} buildings now.");
@@ -217,13 +212,6 @@ public class GeoObjectSpawner : MonoBehaviour
             return;
         }
 
-        if (useBuildingGeometryFromTextField)
-        {
-            // manueller Single-Building-Modus
-            TrySpawnBuildingGeometry(buildingCoordinatesLv95, buildingName, _altitudeMeters, out _);
-            return;
-        }
-
         if (enriched == null || enriched.Count == 0)
             return;
 
@@ -272,7 +260,7 @@ public class GeoObjectSpawner : MonoBehaviour
         if (string.IsNullOrWhiteSpace(coordinatesLv95))
             return false;
 
-        var buildingNameToUse = string.IsNullOrWhiteSpace(name) ? buildingName : name;
+        var buildingNameToUse = string.IsNullOrWhiteSpace(name) ? "Building" : name;
         float altitude = (float)(elevation > 0.0 ? elevation : _altitudeMeters);
 
         buildingFactory.SetExtrusionHeight(objectHeightMeters);
