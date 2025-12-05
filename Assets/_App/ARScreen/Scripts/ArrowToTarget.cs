@@ -25,7 +25,7 @@ public class ArrowToTarget : MonoBehaviour
         }
 
         Input.compass.enabled = true;
-        if (Input.location.isEnabledByUser) Input.location.Start(1f, 0.1f);
+        if (Input.location.isEnabledByUser) Input.location.Start(0.1f, 0.1f);
     }
 
     void Update()
