@@ -62,6 +62,6 @@ public class ClippingChanger : MonoBehaviour
         }
 
         Debug.Log($"ClippingChanger: Far clip -> {targetCamera.farClipPlane:F2}");
-        VibrationService.TriggerLoadVibration();
+        VibrationService.TriggerLoadVibration(50);
     }
 }

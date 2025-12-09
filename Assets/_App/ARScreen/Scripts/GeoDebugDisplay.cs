@@ -19,6 +19,16 @@ public class GeoDebugDisplay : MonoBehaviour
 
     [Header("UI")] public bool showDebugDisplay = true;
 
+    // Static projection status tracking
+    public static int ProjectionsCreatedCount { get; set; } = 0;
+    public static float ProjectionsCreatedTime { get; set; } = 0f;
+    public static bool ProjectionsReady { get; set; } = false;
+    
+    // Last positioned building info (for debugging)
+    public static double LastPositionedBuildingLat { get; set; } = 0;
+    public static double LastPositionedBuildingLon { get; set; } = 0;
+    public static float LastPositionedBuildingAlt { get; set; } = 0;
+
     [Tooltip("Update interval in seconds")]
     public float updateInterval = 0.5f;
 
@@ -59,7 +69,7 @@ public class GeoDebugDisplay : MonoBehaviour
         // GPS & Compass
         if (Input.location.isEnabledByUser)
         {
-            Input.location.Start(1f, 0.5f);
+            Input.location.Start(0.1f, 0.5f);
             _gpsStarted = true;
         }
 
@@ -156,6 +166,7 @@ public class GeoDebugDisplay : MonoBehaviour
 // selected building block (if any)
     string selectedInfo = SelectedInfoBlock(hasSelected, targetLat, targetLon);
     string selectedContextInfo = SelectedContextRawBlock();
+    string projectionsInfo = ProjectionsStatusLine();
 
 // Build UI
         _text.text =
@@ -167,6 +178,7 @@ public class GeoDebugDisplay : MonoBehaviour
             proximityInfo +
             (string.IsNullOrEmpty(bearingInfo) ? "" : "\n" + bearingInfo) +
             (string.IsNullOrEmpty(wpsInfo) ? "" : "\n\n" + wpsInfo) +
+            projectionsInfo +
             selectedInfo +
             selectedContextInfo;
     }
@@ -199,6 +211,15 @@ public class GeoDebugDisplay : MonoBehaviour
             : "n/a";
         // If the helper exposes an altitude mode or similar, you could append it here (kept generic for version safety).
         return $"<b>WPS</b>  Status: {mgr}";
+    }
+
+    private string ProjectionsStatusLine()
+    {
+        if (!ProjectionsReady)
+            return "\n\n<b>AR PROJECTIONS</b>\n<color=orange>Not created yet</color>";
+        
+        return $"\n\n<b>AR PROJECTIONS</b>\n" +
+               $"<color=green>✓ Created</color>: {ProjectionsCreatedCount} buildings";
     }
 
     // Always reflect exactly what's inside SelectedTargetContext (no parsing, no trimming)

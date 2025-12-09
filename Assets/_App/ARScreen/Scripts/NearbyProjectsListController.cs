@@ -100,6 +100,10 @@ public class NearbyProjectsListController : MonoBehaviour
 
         if (geoObjectSpawner)
             geoObjectSpawner.ClearAllBuildings();
+        
+        // Reset debug display projection status
+        GeoDebugDisplay.ProjectionsReady = false;
+        GeoDebugDisplay.ProjectionsCreatedCount = 0;
 
         if (refreshButton) refreshButton.interactable = false;
         if (distanceDropdown) distanceDropdown.interactable = false;
@@ -236,6 +240,11 @@ public class NearbyProjectsListController : MonoBehaviour
         if (geoObjectSpawner.IsReady)
         {
             geoObjectSpawner.CreateARProjections(contextsCopy);
+            
+            // Update debug display status
+            GeoDebugDisplay.ProjectionsCreatedCount = contextsCopy.Count;
+            GeoDebugDisplay.ProjectionsCreatedTime = 0f;
+            GeoDebugDisplay.ProjectionsReady = true;
         }
         else
         {
@@ -339,7 +348,7 @@ public class NearbyProjectsListController : MonoBehaviour
         if (!Input.location.isEnabledByUser)
             yield break;
 
-        Input.location.Start(1f, 1f); // desiredAccuracyInMeters, updateDistanceInMeters
+        Input.location.Start(0.1f, 0.5f); // desiredAccuracyInMeters, updateDistanceInMeters
 
         // wait up to ~5s for service to initialize
         const float timeout = 5f;
@@ -415,6 +424,11 @@ public class NearbyProjectsListController : MonoBehaviour
             {
                 Debug.Log($"[NearbyProjectsListController] Spawner ready after {elapsed:F1}s, spawning {contexts.Count} buildings");
                 geoObjectSpawner.CreateARProjections(contexts);
+                
+                // Update debug display status
+                GeoDebugDisplay.ProjectionsCreatedCount = contexts.Count;
+                GeoDebugDisplay.ProjectionsCreatedTime = elapsed;
+                GeoDebugDisplay.ProjectionsReady = true;
             }
             else
             {

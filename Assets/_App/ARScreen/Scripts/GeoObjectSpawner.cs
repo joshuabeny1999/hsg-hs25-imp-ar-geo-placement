@@ -34,7 +34,9 @@ public class GeoObjectSpawner : MonoBehaviour
 
     private readonly Dictionary<string, SelectedTargetContext> _contextsByKey = new();
 
-    public System.Action<bool> OnSelectionChanged;    private GameObject _selectedObject;
+    public System.Action<bool> OnSelectionChanged;
+    public System.Action<bool> OnWpsReadyChanged;
+    private GameObject _selectedObject;
     private string _selectedKey;
     private readonly string COLOR_PROPERTY = "_Color";
     private Dictionary<Renderer, Color> _selectedOriginalColors;
@@ -90,14 +92,11 @@ public class GeoObjectSpawner : MonoBehaviour
     /// </summary>
     public void CreateARProjections(List<SelectedTargetContext> enriched = null)
     {
-        Debug.Log($"[GeoObjectSpawner] CreateARProjections called. IsReady={IsReady}, WpsReady={_wpsReady}, AltReady={_altitudeReady}");
-
         if (enriched != null)
             _pendingContexts = new List<SelectedTargetContext>(enriched);
 
         if (!IsReady)
         {
-            Debug.Log($"[GeoObjectSpawner] NOT READY - queueing {_pendingContexts?.Count ?? 0} projections.");
             EnsureInitializationRoutine();
             return;
         }
@@ -106,7 +105,6 @@ public class GeoObjectSpawner : MonoBehaviour
         if (!hasPending)
             return;
 
-        Debug.Log($"[GeoObjectSpawner] READY - spawning {_pendingContexts?.Count ?? 0} buildings now.");
         SpawnGeoObjects(_pendingContexts);
         _pendingContexts = null;
     }
@@ -126,27 +124,26 @@ public class GeoObjectSpawner : MonoBehaviour
         {
             float t = 0f;
             const float timeout = 30f;
-            Debug.Log("[GeoObjectSpawner] Waiting for WPS to become available...");
             while (!wpsManager.IsAvailable && t < timeout)
             {
                 t += Time.deltaTime;
-                if ((int)t % 5 == 0 && t > 0)
-                    Debug.Log($"[GeoObjectSpawner] Still waiting for WPS... ({t:F0}s/{timeout}s)");
                 yield return null;
             }
 
             _wpsReady = wpsManager.IsAvailable;
-            Debug.Log($"[GeoObjectSpawner] WPS available: {_wpsReady}");
+            OnWpsReadyChanged?.Invoke(_wpsReady);
 
             if (!_wpsReady)
-                Debug.LogError("[GeoObjectSpawner] WPS not ready after timeout!");
+                Debug.LogWarning("[GeoObjectSpawner] WPS not ready after timeout");
         } else
         {
 #if UNITY_EDITOR
             _wpsReady = true;
+            OnWpsReadyChanged?.Invoke(_wpsReady);
             Debug.LogWarning("[GeoObjectSpawner] No WPS Manager found (Editor). Using fallback.");
 #else
             _wpsReady = false;
+            OnWpsReadyChanged?.Invoke(_wpsReady);
             Debug.LogError("[GeoObjectSpawner] No WPS Manager found! Cannot position buildings.");
 #endif
         }
@@ -175,7 +172,7 @@ public class GeoObjectSpawner : MonoBehaviour
         var status = Input.location.status;
         if (status == LocationServiceStatus.Stopped)
         {
-            Input.location.Start(1f, 0.5f);
+            Input.location.Start(0.1f, 0.5f);
             status = Input.location.status;
         }
 
@@ -192,11 +189,6 @@ public class GeoObjectSpawner : MonoBehaviour
         if (status == LocationServiceStatus.Running)
         {
             _altitudeMeters = Input.location.lastData.altitude;
-            Debug.Log($"[GeoObjectSpawner] Altitude from device: {_altitudeMeters}m");
-        }
-        else
-        {
-            Debug.LogWarning("[GeoObjectSpawner] Location service unavailable, using altitude 0m");
         }
     }
 
@@ -217,6 +209,7 @@ public class GeoObjectSpawner : MonoBehaviour
 
         foreach (var ctx in enriched)
         {
+            // Use stored elevation if available, otherwise fall back to device altitude
             var elevation = ctx.ElevationMeters.HasValue && ctx.ElevationMeters.Value > 0.0
                 ? ctx.ElevationMeters.Value
                 : _altitudeMeters;
@@ -228,10 +221,7 @@ public class GeoObjectSpawner : MonoBehaviour
                 var key = MakeBuildingKey(ctx);
 
                 if (_buildingsByKey.TryGetValue(key, out var existing) && existing != null)
-                {
-                    Debug.LogWarning($"[GeoObjectSpawner] Overwriting existing building for key={key}, destroying old instance.");
                     Destroy(existing);
-                }
 
                 _buildingsByKey[key] = go;
                 _contextsByKey[key] = ctx;
@@ -270,7 +260,6 @@ public class GeoObjectSpawner : MonoBehaviour
             return false;
 
         buildingGo = building.GameObject;
-        Debug.Log($"[GeoObjectSpawner] Building '{buildingNameToUse}' spawned | Altitude: {altitude}m | Height {objectHeightMeters}m");
 
         var renderers = buildingGo.GetComponentsInChildren<Renderer>(true);
         foreach (var r in renderers)
@@ -283,7 +272,7 @@ public class GeoObjectSpawner : MonoBehaviour
         {
             Debug.LogWarning($"[GeoObjectSpawner] WPS not ready or no positioningHelper, building '{buildingNameToUse}' stays at factory origin.");
             buildingGo.transform.SetParent(transform, false);
-            VibrationService.TriggerLoadVibration(1000);
+            VibrationService.TriggerLoadVibration(50);
             return true;
         }
 
@@ -294,7 +283,12 @@ public class GeoObjectSpawner : MonoBehaviour
             building.AltitudeMeters,
             Quaternion.identity);
 
-        VibrationService.TriggerLoadVibration(1000);
+        // Update debug display with positioning info
+        GeoDebugDisplay.LastPositionedBuildingLat = building.Latitude;
+        GeoDebugDisplay.LastPositionedBuildingLon = building.Longitude;
+        GeoDebugDisplay.LastPositionedBuildingAlt = building.AltitudeMeters;
+
+        VibrationService.TriggerLoadVibration(50);
         return true;
     }
 

@@ -80,7 +80,9 @@ namespace Shared.Scripts.Geo
 
         [SerializeField] private double debugLv95CoordinatesEast = 2743009.24f;
         [SerializeField] private double debugLv95CoordinatesNorth = 1252728.11f;
-        [SerializeField] private float locationDesiredAccuracyMeters = 5f;
+
+        [Header("Location Service Settings")]
+        [SerializeField] private float locationDesiredAccuracyMeters = 0.1f;
         [SerializeField] private float locationUpdateDistanceMeters = 0.5f;
         [SerializeField] private float locationServiceTimeoutSeconds = 20f;
 
