@@ -2,7 +2,7 @@
 
 **On-Site Visualization of Planned Construction Projects using Geospatial AR**
 
-GeoBau Explorer AR is a mobile augmented reality application that overlays planned construction projects onto real-world locations using GPS-based positioning. The application targets Switzerland's construction sector, enabling users to visualize planned buildings ("projektiert" status) at their actual geographic positions using Swiss cadastral data.
+GeoBau Explorer AR is a mobile augmented reality application that overlays planned construction projects onto real-world locations using GPS-based positioning. The application targets Switzerland's construction sector, enabling users to visualize planned buildings at their actual geographic positions using Swiss cadastral data.
 
 ![Baugerüst](./docs/screenshots.png)
 
@@ -39,7 +39,7 @@ The application follows a layered architecture with clear separation of concerns
 ### External Dependencies
 - **Swiss GeoPortal**: WFS for cadastral geometry, REST APIs for elevation and property data
 - **Niantic Lightship ARDK**: WPS, ARKit, ARCore integration
-- **Device Sensors**: GPS, camera
+- **Device Sensors**: GPS
 
 ## Data Flow
 
@@ -175,7 +175,7 @@ Conducted at HSG campus with following results:
 Potential improvements include:
 - Progressive loading and Level of Detail systems for improved scalability in dense urban areas
 - Placement correction algorithms that refine positioning using visual feature detection or user-assisted alignment
-- Enhance altitude accuracy through better terrain data integration or calibration mechanisms
+- Enhance altitude accuracys through better terrain data integration or calibration mechanisms
 - Compass-based navigation to guide users toward nearby projects
 - API abstraction layer to insulate the application from upstream GeoPortal service changes and facilitate potential migration to alternative data sources
 
