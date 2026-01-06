@@ -182,7 +182,7 @@ Potential improvements include:
 ## Acknowledgements
 
 This project was developed as part of the HSG HS25 IMP course. Special thanks to:
-- Swiss Federal Office of Topography (swisstopo) for GeoPortal API access
+- GeoInfo (geoportal.ch) for cadastral and elevation data APIs
 - Niantic for the Lightship ARDK platform
 - ProjNet contributors for coordinate transformation library
 
