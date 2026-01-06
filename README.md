@@ -170,6 +170,47 @@ Conducted at HSG campus with following results:
 3. Configure Lightship API key in project settings
 4. Build for iOS or Android target platform
 
+## Deployment & Release
+
+### iOS (App Store)
+Deploying to iOS requires a two-step build process involving both Unity and Xcode (Mac needed).
+
+1.  **Unity Build**
+    * Open **File > Build Settings** and switch the platform to **iOS**.
+    * Ensure your scene is added to *Scenes in Build*.
+    * Click **Build** to generate an Xcode project folder on your Mac.
+
+2.  **Xcode Configuration**
+    * Open the generated `.xcodeproj` file.
+    * Navigate to **Signing & Capabilities**.
+    * Select your **Team** (Apple Developer Account) and ensure the **Bundle Identifier** matches your App Store Connect entry.
+    * Set the **Deployment Target** (minimum iOS version, e.g., iOS 14.0 for ARKit).
+
+3.  **Archive & Upload**
+    * Select **Product > Archive** to build the release binary.
+    * Use the *Organizer* window to validate and **Distribute App** to App Store Connect (TestFlight or Production).
+
+> **Reference:** [Unity iOS Build Settings](https://docs.unity3d.com/Manual/iphone-BuildSettings.html) | [Apple App Store Distribution](https://developer.apple.com/documentation/xcode/distributing-your-app-for-beta-testing-and-releases)
+
+### Android (Google Play Store)
+Android builds are generated directly from Unity as an Android App Bundle (`.aab`).
+
+1.  **Keystore Configuration**
+    * Go to **Project Settings > Player > Publishing Settings**.
+    * Use the **Keystore Manager** to create a new Keystore or load an existing one.
+    * *Critical:* Securely back up your Keystore file and passwords. You cannot update the app if these are lost.
+
+2.  **Build Settings**
+    * Open **File > Build Settings** and switch the platform to **Android**.
+    * Check the **Build App Bundle (Google Play)** box.
+    * Ensure **Scripting Backend** is set to `IL2CPP` and **Target Architectures** includes `ARM64` (required by Google Play).
+
+3.  **Build & Upload**
+    * Click **Build** to generate the `.aab` file.
+    * Upload the file to the **Production** or **Testing** tracks in the [Google Play Console](https://play.google.com/console).
+
+> **Reference:** [Unity Android Publishing](https://docs.unity3d.com/Manual/android-BuildProcess.html) | [Play Console Help](https://support.google.com/googleplay/android-developer/answer/9859152)
+
 ## Future Work
 
 Potential improvements include:
